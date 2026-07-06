@@ -191,10 +191,22 @@ def report_events(request):
 def report_workflow(request):
     from workflow.models import ReviewClient, WorkflowStage
 
-    tenant = request.user.tenant
-    today  = timezone.localdate()
+    tenant       = request.user.tenant
+    today        = timezone.localdate()
+    stage_filter = request.GET.get('stage', '')
+    status_filter= request.GET.get('status', '')
 
     clients = ReviewClient.objects.filter(tenant=tenant).prefetch_related('stages')
+
+    if stage_filter or status_filter:
+        stage_qs = WorkflowStage.objects.filter(client__tenant=tenant)
+        if stage_filter:
+            stage_qs = stage_qs.filter(stage=stage_filter)
+        if status_filter:
+            stage_qs = stage_qs.filter(status=status_filter)
+        client_ids = stage_qs.values_list('client_id', flat=True).distinct()
+        clients = clients.filter(pk__in=client_ids)
+
     by_stage = WorkflowStage.objects.filter(client__tenant=tenant).values('stage','status').annotate(count=Count('id'))
     overdue  = WorkflowStage.objects.filter(
         client__tenant=tenant, due_date__lt=today,
@@ -202,12 +214,13 @@ def report_workflow(request):
     ).select_related('client')
 
     return render(request, 'reports/workflow.html', {
-        'clients': clients,
-        'by_stage': by_stage,
-        'overdue': overdue,
+        'clients':       clients,
+        'by_stage':      by_stage,
+        'overdue':       overdue,
         'stage_choices': WorkflowStage.STAGE_CHOICES,
-        'status_choices': WorkflowStage.STATUS_CHOICES,
-        'today': today,
+        'status_choices':WorkflowStage.STATUS_CHOICES,
+        'today':         today,
+        'filters':       {'stage': stage_filter, 'status': status_filter},
     })
 
 
