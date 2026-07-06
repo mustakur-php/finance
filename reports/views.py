@@ -137,12 +137,14 @@ def report_commissions(request):
         total_review    = Sum('review_commission_amount'),
     )
 
-    by_sheet = sheets.annotate(
-        t_amount    = Sum('entries__amount'),
-        t_sales     = Sum('entries__commission_amount'),
-        t_accountant= Sum('entries__accountant_commission_amount'),
-        t_review    = Sum('entries__review_commission_amount'),
-    ).order_by('-created_at')
+    # by_sheet يعكس نفس الفلاتر المطبقة على entries
+    entry_ids = entries.values_list('id', flat=True)
+    by_sheet = sheets.filter(entries__id__in=entry_ids).annotate(
+        t_amount    = Sum('entries__amount',                    filter=Q(entries__id__in=entry_ids)),
+        t_sales     = Sum('entries__commission_amount',         filter=Q(entries__id__in=entry_ids)),
+        t_accountant= Sum('entries__accountant_commission_amount', filter=Q(entries__id__in=entry_ids)),
+        t_review    = Sum('entries__review_commission_amount',  filter=Q(entries__id__in=entry_ids)),
+    ).distinct().order_by('-created_at')
 
     top_clients = entries.values('client__name').annotate(
         total=Sum('amount')
@@ -584,9 +586,7 @@ def export_commissions_pdf(request):
     from reportlab.platypus import SimpleDocTemplate
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.units import cm
-    from commissions.models import CommissionSheet
-    from django.db.models import Sum
-
+    from django.db.models import Sum, Q
     from commissions.models import CommissionEntry
 
     tenant      = request.user.tenant
@@ -612,13 +612,25 @@ def export_commissions_pdf(request):
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=landscape(A4), rightMargin=1*cm, leftMargin=1*cm,
                             topMargin=2.5*cm, bottomMargin=1.5*cm)
+    # نفس by_sheet في الـ view
+    from commissions.models import CommissionSheet
+    entry_ids = entries.values_list('id', flat=True)
+    by_sheet = CommissionSheet.objects.filter(tenant=tenant, entries__id__in=entry_ids).annotate(
+        t_amount    = Sum('entries__amount',                       filter=Q(entries__id__in=entry_ids)),
+        t_sales     = Sum('entries__commission_amount',            filter=Q(entries__id__in=entry_ids)),
+        t_accountant= Sum('entries__accountant_commission_amount', filter=Q(entries__id__in=entry_ids)),
+        t_review    = Sum('entries__review_commission_amount',     filter=Q(entries__id__in=entry_ids)),
+    ).distinct().order_by('-created_at')
+
     col_w = [7.7*cm, 5*cm, 5*cm, 5*cm, 5*cm]  # total 27.7
-    rows = [['الشيت','العميل','المبلغ','عمولة المناديب','عمولة المحاسبين']]
-    for e in entries:
+    rows = [['الشيت','إجمالي المبالغ','عمولات المناديب','عمولات المحاسبين','عمولات المراجعين']]
+    for s in by_sheet:
         rows.append([
-            str(e.sheet), e.client.name if e.client else '—',
-            str(round(e.amount or 0, 2)), str(round(e.commission_amount or 0, 2)),
-            str(round(e.accountant_commission_amount or 0, 2)),
+            str(s),
+            str(round(s.t_amount or 0, 2)),
+            str(round(s.t_sales or 0, 2)),
+            str(round(s.t_accountant or 0, 2)),
+            str(round(s.t_review or 0, 2)),
         ])
 
     story = [_build_table(rows, col_widths=col_w)]

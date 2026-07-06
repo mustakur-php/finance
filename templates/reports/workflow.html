@@ -7,7 +7,7 @@
     <a href="{% url 'reports_home' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-right me-1"></i> رجوع</a>
     <div class="d-flex gap-2">
         <a href="{% url 'export_workflow_excel' %}?{{ request.GET.urlencode }}" class="btn btn-success btn-sm"><i class="bi bi-file-earmark-excel me-1"></i> Excel</a>
-        <a href="{% url 'export_workflow_pdf' %}?{{ request.GET.urlencode }}" class="btn btn-danger btn-sm"><i class="bi bi-file-earmark-pdf me-1"></i> PDF</a>
+        <a href="{% url 'export_workflow_pdf' %}?{{ request.GET.urlencode }}" class="btn btn-danger btn-sm" target="_blank"><i class="bi bi-file-earmark-pdf me-1"></i> PDF</a>
     </div>
 </div>
 
