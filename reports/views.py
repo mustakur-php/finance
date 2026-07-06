@@ -481,24 +481,35 @@ def _pdf_header(canvas, doc, title, username):
 
 
 def _build_table(data, col_widths=None):
-    from reportlab.platypus import Table, TableStyle
+    from reportlab.platypus import Table, TableStyle, Paragraph
     from reportlab.lib import colors
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.enums import TA_RIGHT
     _register_arabic_font()
-    # Reverse columns for RTL layout + apply Arabic reshaping
-    ar_data = [[_ar(cell) for cell in reversed(row)] for row in data]
+
+    body_style = ParagraphStyle('ar_body', fontName='Arial',     fontSize=8,  alignment=TA_RIGHT, leading=11, wordWrap='CJK')
+    head_style = ParagraphStyle('ar_head', fontName='Arial-Bold', fontSize=8, alignment=TA_RIGHT, leading=11, wordWrap='CJK', textColor=colors.white)
+
+    def _cell(text, is_header=False):
+        style = head_style if is_header else body_style
+        return Paragraph(_ar(str(text)) if text else '', style)
+
+    ar_data = []
+    for i, row in enumerate(data):
+        ar_data.append([_cell(cell, is_header=(i == 0)) for cell in reversed(row)])
+
     rtl_widths = list(reversed(col_widths)) if col_widths else None
     t = Table(ar_data, colWidths=rtl_widths, repeatRows=1)
     t.setStyle(TableStyle([
-        ('BACKGROUND',  (0,0), (-1,0),  colors.HexColor('#1a3a5c')),
-        ('TEXTCOLOR',   (0,0), (-1,0),  colors.white),
-        ('FONTNAME',    (0,0), (-1,-1), 'Arial'),
-        ('FONTNAME',    (0,0), (-1,0),  'Arial-Bold'),
-        ('FONTSIZE',    (0,0), (-1,-1), 8),
-        ('ALIGN',       (0,0), (-1,-1), 'RIGHT'),
+        ('BACKGROUND',     (0,0), (-1,0),  colors.HexColor('#1a3a5c')),
+        ('ALIGN',          (0,0), (-1,-1), 'RIGHT'),
+        ('VALIGN',         (0,0), (-1,-1), 'MIDDLE'),
         ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#f5f7fa')]),
-        ('GRID',        (0,0), (-1,-1), 0.3, colors.HexColor('#dddddd')),
-        ('TOPPADDING',  (0,0), (-1,-1), 4),
-        ('BOTTOMPADDING',(0,0),(-1,-1), 4),
+        ('GRID',           (0,0), (-1,-1), 0.3, colors.HexColor('#dddddd')),
+        ('TOPPADDING',     (0,0), (-1,-1), 5),
+        ('BOTTOMPADDING',  (0,0), (-1,-1), 5),
+        ('LEFTPADDING',    (0,0), (-1,-1), 4),
+        ('RIGHTPADDING',   (0,0), (-1,-1), 4),
     ]))
     return t
 
