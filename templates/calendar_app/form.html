@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 700px;">
+    <div class="card-header"><i class="bi bi-calendar-plus me-1"></i> {{ title }}</div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label">عنوان الحدث *</label>
+                    {{ form.title }}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">النوع</label>
+                    {{ form.event_type }}
+                </div>
+                {% if form.source %}
+                <div class="col-md-6">
+                    <label class="form-label">القسم</label>
+                    {{ form.source }}
+                </div>
+                {% endif %}
+                <div class="col-md-6">
+                    <label class="form-label">وقت الحدث *</label>
+                    {{ form.start_datetime }}
+                </div>
+                <div class="col-12">
+                    <label class="form-label">العميل</label>
+                    {% if event %}
+                    <div class="form-control bg-light text-muted">{{ event.client|default:"—" }}</div>
+                    {% else %}
+                    {{ form.client }}
+                    {% endif %}
+                </div>
+                {% if form.assigned_to %}
+                <div class="col-12">
+                    <label class="form-label">مسند إلى</label>
+                    {{ form.assigned_to }}
+                </div>
+                {% endif %}
+                <div class="col-12" id="notes-box" style="display:{% if form.notes.value %}block{% else %}none{% endif %};">
+                    <label class="form-label">ملاحظات</label>
+                    {{ form.notes }}
+                </div>
+            </div>
+            <div class="mt-4 d-flex gap-2">
+                <button type="submit" class="btn btn-primary px-4">حفظ</button>
+                <a href="{% url 'calendar_view' %}" class="btn btn-outline-secondary">إلغاء</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+(function () {
+    var typeSelect = document.getElementById('{{ form.event_type.auto_id }}');
+    var notesBox   = document.getElementById('notes-box');
+    if (!typeSelect) return;
+    typeSelect.addEventListener('change', function () {
+        notesBox.style.display = this.value ? 'block' : 'none';
+    });
+})();
+</script>
+{% endblock %}

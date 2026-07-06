@@ -1,0 +1,415 @@
+{% extends 'base.html' %}
+{% block title %}{{ sheet.name }}{% endblock %}
+{% block page_title %}{{ sheet.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .edit-input { width: 100px; text-align: right; }
+    .rate-input { width: 75px; text-align: right; }
+    .editing-row td { background: #fffbf0 !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# ===== بطاقات الملخص ===== #}
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card stat-card blue p-3">
+            <div class="text-muted small mb-1">إجمالي المبالغ</div>
+            <div class="fs-5 fw-bold text-primary">{{ totals.total_amount|default:"0"|floatformat:2 }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card green p-3">
+            <div class="text-muted small mb-1">عمولات المناديب</div>
+            <div class="fs-5 fw-bold" style="color:#375623;">{{ totals.total_commission|default:"0"|floatformat:2 }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card orange p-3">
+            <div class="text-muted small mb-1">عمولات المحاسبين</div>
+            <div class="fs-5 fw-bold" style="color:#C55A11;">{{ totals.total_accountant_commission|default:"0"|floatformat:2 }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card p-3 border-0" style="border-right:4px solid #6a1b9a !important; background:#f3e5f5">
+            <div class="text-muted small mb-1">عمولات المراجعين</div>
+            <div class="fs-5 fw-bold" style="color:#6a1b9a;">{{ totals.total_review_commission|default:"0"|floatformat:2 }}</div>
+        </div>
+    </div>
+</div>
+<div class="row g-3 mb-4">
+    <div class="col-md-12">
+        <div class="card p-3 border-0" style="border-right:4px solid #6f42c1 !important; background:#f8f5ff">
+            <div class="text-muted small mb-1">إجمالي العمولات</div>
+            <div class="fs-5 fw-bold" style="color:#6f42c1;">{{ totals.total_all_commissions|default:"0"|floatformat:2 }}</div>
+            <div class="text-muted" style="font-size:0.7rem">مناديب + محاسبين + مراجعين</div>
+        </div>
+    </div>
+</div>
+
+{# ===== شريط الفلتر ===== #}
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label small text-muted mb-1">بحث (عميل / مندوب)</label>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" name="q" class="form-control" placeholder="اكتب للبحث..." value="{{ q }}">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small text-muted mb-1">من تاريخ</label>
+                <input type="date" name="date_from" class="form-control form-control-sm" value="{{ date_from }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small text-muted mb-1">إلى تاريخ</label>
+                <input type="date" name="date_to" class="form-control form-control-sm" value="{{ date_to }}">
+            </div>
+            <div class="col-md-2 d-flex gap-1">
+                <button type="submit" class="btn btn-primary btn-sm flex-fill">
+                    <i class="bi bi-funnel"></i> فلتر
+                </button>
+                <a href="{% url 'commission_detail' sheet.pk %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{# ===== الجدول ===== #}
+<div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-table me-1"></i> سطور العمولات ({{ entries.count }} عميل)</span>
+            <div class="d-flex gap-2">
+                {% if request.user.is_admin %}
+                <form method="post" action="{% url 'commission_refresh_sheet' sheet.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-success btn-sm">
+                        <i class="bi bi-arrow-clockwise me-1"></i> تحديث الشيت
+                    </button>
+                </form>
+                {% endif %}
+                <a href="{% url 'export_sheet_excel' sheet.pk %}" class="btn btn-outline-success btn-sm">
+                    <i class="bi bi-file-earmark-excel me-1"></i> Excel
+                </a>
+                <a href="{% url 'export_sheet_pdf' sheet.pk %}" class="btn btn-outline-danger btn-sm" target="_blank">
+                    <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+                </a>
+                <a href="{% url 'commissions_list' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-right me-1"></i> القائمة
+                </a>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle" style="font-size:0.875rem">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:50px">✓</th>
+                        <th>العميل</th>
+                        <th>الشركة</th>
+                        <th>المندوب</th>
+                        <th>المحاسب</th>
+                        <th>المراجع</th>
+                        <th class="text-end">المبلغ</th>
+                        <th class="text-end">عمولة المندوب</th>
+                        <th class="text-end">عمولة المحاسب</th>
+                        <th class="text-end">عمولة المراجع</th>
+                        <th style="width:90px"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for entry in entries %}
+                    <form method="post" action="{% url 'entry_amount_save' entry.pk %}" id="form-{{ entry.pk }}">
+                    {% csrf_token %}
+                    <tr id="row-{{ entry.pk }}" class="{% if entry.is_confirmed %}table-success{% endif %}">
+                        <td>
+                            <button type="button" form="" class="btn btn-sm {% if entry.is_confirmed %}btn-success{% else %}btn-outline-secondary{% endif %}"
+                                onclick="this.form=null;fetch('{% url 'commission_toggle' entry.pk %}',{method:'POST',headers:{'X-CSRFToken':'{{ csrf_token }}'}}).then(()=>location.reload())">
+                                <i class="bi {% if entry.is_confirmed %}bi-check-lg{% else %}bi-circle{% endif %}"></i>
+                            </button>
+                        </td>
+                        <td class="fw-semibold">{{ entry.client.name }}</td>
+                        <td class="text-muted">{{ entry.client.company|default:"—" }}</td>
+                        <td>{{ entry.sales_rep.get_full_name|default:entry.sales_rep.username }}</td>
+                        <td>
+                            {% if entry.client.assigned_accountant %}
+                                {{ entry.client.assigned_accountant.get_full_name|default:entry.client.assigned_accountant.username }}
+                            {% else %}<span class="text-muted">—</span>{% endif %}
+                        </td>
+                        <td>
+                            {% if entry.client.assigned_review %}
+                                {{ entry.client.assigned_review.get_full_name|default:entry.client.assigned_review.username }}
+                            {% else %}<span class="text-muted">—</span>{% endif %}
+                        </td>
+
+                        {# المبلغ #}
+                        <td class="text-end">
+                            {% if request.user.is_admin %}
+                            <span class="view-val fw-semibold">{{ entry.amount|floatformat:2 }}</span>
+                            <input type="number" name="amount"
+                                   value="{{ entry.amount|floatformat:2 }}"
+                                   class="form-control form-control-sm edit-input d-none"
+                                   style="width:110px" step="0.01" min="0">
+                            {% else %}
+                            <span class="fw-semibold">{{ entry.amount|floatformat:2 }}</span>
+                            {% endif %}
+                        </td>
+                        {# عمولة المندوب #}
+                        <td class="text-end">
+                            {% if request.user.is_admin %}
+                            <button type="button" class="btn btn-link fw-bold text-success p-0 text-decoration-none"
+                                data-bs-toggle="modal" data-bs-target="#mS{{ entry.pk }}"
+                                style="font-size:inherit">{{ entry.commission_amount|floatformat:2 }}</button>
+                            {% else %}
+                            <span class="fw-bold text-success">{{ entry.commission_amount|floatformat:2 }}</span>
+                            {% endif %}
+                        </td>
+                        {# عمولة المحاسب #}
+                        <td class="text-end">
+                            {% if request.user.is_admin %}
+                            <button type="button" class="btn btn-link fw-bold text-warning p-0 text-decoration-none"
+                                data-bs-toggle="modal" data-bs-target="#mA{{ entry.pk }}"
+                                style="font-size:inherit">{{ entry.accountant_commission_amount|floatformat:2 }}</button>
+                            {% else %}
+                            <span class="fw-bold text-warning">{{ entry.accountant_commission_amount|floatformat:2 }}</span>
+                            {% endif %}
+                        </td>
+                        {# عمولة المراجع #}
+                        <td class="text-end">
+                            {% if request.user.is_admin %}
+                            <button type="button" class="btn btn-link fw-bold p-0 text-decoration-none"
+                                data-bs-toggle="modal" data-bs-target="#mR{{ entry.pk }}"
+                                style="font-size:inherit;color:#6a1b9a">{{ entry.review_commission_amount|floatformat:2 }}</button>
+                            {% else %}
+                            <span class="fw-bold" style="color:#6a1b9a">{{ entry.review_commission_amount|floatformat:2 }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="d-flex gap-1">
+                                {% if request.user.is_admin %}
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-primary edit-btn"
+                                        data-row="{{ entry.pk }}"
+                                        title="تعديل / حفظ">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                {% endif %}
+                                <button type="submit" form="form-{{ entry.pk }}"
+                                        class="btn btn-sm btn-success save-btn d-none"
+                                        title="حفظ">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary cancel-btn d-none"
+                                        data-row="{{ entry.pk }}" title="إلغاء">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                                <button type="submit" form="del-entry-{{ entry.pk }}"
+                                        class="btn btn-sm btn-outline-danger" title="حذف"
+                                        onclick="return confirm('حذف هذا السطر؟')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    </form>
+                {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center text-muted py-5">
+                            <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+                            لا توجد سطور
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+                {% if entries %}
+                <tfoot class="table-light fw-bold">
+                    <tr>
+                        <td colspan="5" class="text-start">الإجمالي ({{ entries.count }} سطر)</td>
+                        <td class="text-end">{{ totals.total_amount|default:"0"|floatformat:2 }}</td>
+                        <td class="text-end text-success">{{ totals.total_commission|default:"0"|floatformat:2 }}</td>
+                        <td class="text-end text-warning">{{ totals.total_accountant_commission|default:"0"|floatformat:2 }}</td>
+                        <td class="text-end" style="color:#6a1b9a">{{ totals.total_review_commission|default:"0"|floatformat:2 }}</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+                {% endif %}
+            </table>
+        </div>
+    </div>
+
+{# ===== Modals قواعد العمولة — مستقلة لكل سطر (entry.pk) ===== #}
+{% if request.user.is_admin %}
+{% for entry in entries %}
+{# --- Modal المندوب --- #}
+<div class="modal fade" id="mS{{ entry.pk }}" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-success bg-opacity-10">
+        <h6 class="modal-title text-success"><i class="bi bi-person-badge me-1"></i> عمولة المندوب — {{ entry.client.name }}</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form method="post" action="{% url 'entry_commission_save' entry.pk %}">
+          {% csrf_token %}<input type="hidden" name="department" value="sales">
+          <div class="row g-3">
+            <div class="col-6">
+              <label class="form-label fw-semibold">نوع العمولة *</label>
+              <select name="commission_type" class="form-select">
+                <option value="fixed" {% if entry.sales_rule.commission_type == 'fixed' %}selected{% endif %}>مبلغ ثابت (ريال)</option>
+                <option value="percent" {% if entry.sales_rule.commission_type == 'percent' %}selected{% endif %}>نسبة مئوية (%)</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">القيمة *</label>
+              <input type="number" name="value" step="0.01" min="0" class="form-control" placeholder="500 أو 5" value="{{ entry.sales_rule.value|default:'' }}" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">الحد الأعلى</label>
+              <input type="number" name="max_amount" step="0.01" min="0" class="form-control" value="{{ entry.sales_rule.max_amount|default:'' }}">
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">ملاحظات</label>
+              <textarea name="notes" class="form-control" rows="2">{{ entry.sales_rule.notes|default:'' }}</textarea>
+            </div>
+          </div>
+          <div class="d-flex justify-content-between mt-3">
+            {% if entry.sales_rule %}
+            <a href="{% url 'entry_commission_delete' entry.pk 'sales' %}" class="btn btn-outline-danger btn-sm" onclick="return confirm('حذف؟')"><i class="bi bi-trash me-1"></i> حذف</a>
+            {% endif %}
+            <button type="submit" class="btn btn-success btn-sm px-4 ms-auto"><i class="bi bi-check-lg me-1"></i> حفظ</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# --- Modal المحاسب --- #}
+<div class="modal fade" id="mA{{ entry.pk }}" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-primary bg-opacity-10">
+        <h6 class="modal-title text-primary"><i class="bi bi-calculator me-1"></i> عمولة المحاسب — {{ entry.client.name }}</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form method="post" action="{% url 'entry_commission_save' entry.pk %}">
+          {% csrf_token %}<input type="hidden" name="department" value="accountant">
+          <div class="row g-3">
+            <div class="col-6">
+              <label class="form-label fw-semibold">نوع العمولة *</label>
+              <select name="commission_type" class="form-select">
+                <option value="fixed" {% if entry.accountant_rule.commission_type == 'fixed' %}selected{% endif %}>مبلغ ثابت (ريال)</option>
+                <option value="percent" {% if entry.accountant_rule.commission_type == 'percent' %}selected{% endif %}>نسبة مئوية (%)</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">القيمة *</label>
+              <input type="number" name="value" step="0.01" min="0" class="form-control" placeholder="500 أو 5" value="{{ entry.accountant_rule.value|default:'' }}" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">الحد الأعلى</label>
+              <input type="number" name="max_amount" step="0.01" min="0" class="form-control" value="{{ entry.accountant_rule.max_amount|default:'' }}">
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">ملاحظات</label>
+              <textarea name="notes" class="form-control" rows="2">{{ entry.accountant_rule.notes|default:'' }}</textarea>
+            </div>
+          </div>
+          <div class="d-flex justify-content-between mt-3">
+            {% if entry.accountant_rule %}
+            <a href="{% url 'entry_commission_delete' entry.pk 'accountant' %}" class="btn btn-outline-danger btn-sm" onclick="return confirm('حذف؟')"><i class="bi bi-trash me-1"></i> حذف</a>
+            {% endif %}
+            <button type="submit" class="btn btn-primary btn-sm px-4 ms-auto"><i class="bi bi-check-lg me-1"></i> حفظ</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# --- Modal المراجع --- #}
+<div class="modal fade" id="mR{{ entry.pk }}" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#f3e5f5">
+        <h6 class="modal-title" style="color:#6a1b9a"><i class="bi bi-eye me-1"></i> عمولة المراجع — {{ entry.client.name }}</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form method="post" action="{% url 'entry_commission_save' entry.pk %}">
+          {% csrf_token %}<input type="hidden" name="department" value="review">
+          <div class="row g-3">
+            <div class="col-6">
+              <label class="form-label fw-semibold">نوع العمولة *</label>
+              <select name="commission_type" class="form-select">
+                <option value="fixed" {% if entry.review_rule.commission_type == 'fixed' %}selected{% endif %}>مبلغ ثابت (ريال)</option>
+                <option value="percent" {% if entry.review_rule.commission_type == 'percent' %}selected{% endif %}>نسبة مئوية (%)</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">القيمة *</label>
+              <input type="number" name="value" step="0.01" min="0" class="form-control" placeholder="500 أو 5" value="{{ entry.review_rule.value|default:'' }}" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">الحد الأعلى</label>
+              <input type="number" name="max_amount" step="0.01" min="0" class="form-control" value="{{ entry.review_rule.max_amount|default:'' }}">
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">ملاحظات</label>
+              <textarea name="notes" class="form-control" rows="2">{{ entry.review_rule.notes|default:'' }}</textarea>
+            </div>
+          </div>
+          <div class="d-flex justify-content-between mt-3">
+            {% if entry.review_rule %}
+            <a href="{% url 'entry_commission_delete' entry.pk 'review' %}" class="btn btn-outline-danger btn-sm" onclick="return confirm('حذف؟')"><i class="bi bi-trash me-1"></i> حذف</a>
+            {% endif %}
+            <button type="submit" class="btn btn-sm px-4 ms-auto" style="background:#6a1b9a;color:#fff"><i class="bi bi-check-lg me-1"></i> حفظ</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endfor %}
+{% endif %}
+
+{# delete forms خارج الجدول لتجنب تداخل الـ forms #}
+{% if request.user.is_admin %}
+{% for entry in all_entries %}
+<form id="del-entry-{{ entry.pk }}" method="post" action="{% url 'commission_delete_entry' entry.pk %}" style="display:none">
+    {% csrf_token %}
+</form>
+{% endfor %}
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.edit-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        var row = document.getElementById('row-' + this.dataset.row);
+        row.querySelectorAll('.view-val').forEach(el => el.classList.add('d-none'));
+        row.querySelectorAll('.edit-input').forEach(el => { el.classList.remove('d-none'); el.focus(); });
+        this.classList.add('d-none');
+        row.querySelectorAll('.save-btn, .cancel-btn').forEach(el => el.classList.remove('d-none'));
+    });
+});
+
+document.querySelectorAll('.cancel-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        var row = document.getElementById('row-' + this.dataset.row);
+        row.querySelectorAll('.view-val').forEach(el => el.classList.remove('d-none'));
+        row.querySelectorAll('.edit-input').forEach(el => el.classList.add('d-none'));
+        row.querySelectorAll('.save-btn, .cancel-btn').forEach(el => el.classList.add('d-none'));
+        row.querySelector('.edit-btn').classList.remove('d-none');
+    });
+});
+</script>
+{% endblock %}

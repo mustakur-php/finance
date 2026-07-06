@@ -1,0 +1,27 @@
+{% extends 'reports/pdf/base.html' %}
+{% block title %}تقرير قسم المراجعة{% endblock %}
+{% block content %}
+<div class="summary">
+    <div class="kpi"><div class="val">{{ clients|length }}</div><div class="lbl">إجمالي العملاء</div></div>
+</div>
+<table>
+    <thead>
+        <tr><th>العميل</th><th>الشركة</th><th>المرحلة</th><th>الحالة</th><th>بداية</th><th>نهاية</th><th>استحقاق</th><th>المدة (يوم)</th></tr>
+    </thead>
+    <tbody>
+    {% for client in clients %}
+        {% for stage in client.stages.all %}
+        <tr>
+            {% if forloop.first %}<td rowspan="{{ client.stages.all|length }}">{{ client.name }}</td><td rowspan="{{ client.stages.all|length }}">{{ client.company|default:"—" }}</td>{% endif %}
+            <td>{{ stage.get_stage_display }}</td>
+            <td>{{ stage.get_status_display }}</td>
+            <td>{{ stage.start_date|default:"—" }}</td>
+            <td>{{ stage.end_date|default:"—" }}</td>
+            <td>{{ stage.due_date|default:"—" }}</td>
+            <td>{{ stage.days_in_stage|default:"—" }}</td>
+        </tr>
+        {% endfor %}
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

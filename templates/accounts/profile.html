@@ -1,0 +1,296 @@
+{% extends 'base.html' %}
+{% block title %}حسابي الشخصي{% endblock %}
+{% block page_title %}حسابي الشخصي{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+    {# ===== العمود الأيمن: معلومات المستخدم ===== #}
+    <div class="col-lg-4">
+        <div class="card text-center">
+            <div class="card-body py-4">
+                <div class="rounded-circle bg-primary d-inline-flex align-items-center justify-content-center mb-3"
+                     style="width:80px;height:80px;font-size:2rem;color:#fff;">
+                    {{ user.first_name|first|default:user.username|first|upper }}
+                </div>
+                <h5 class="mb-1">{{ user.get_full_name|default:user.username }}</h5>
+                <span class="badge text-white badge-{{ user.role }}">{{ user.get_role_display }}</span>
+                <hr>
+                <div class="text-start small">
+                    <div class="mb-2">
+                        <i class="bi bi-person text-muted me-2"></i>
+                        <span class="text-muted">اسم المستخدم:</span>
+                        <strong class="ms-1">{{ user.username }}</strong>
+                    </div>
+                    {% if user.email %}
+                    <div class="mb-2">
+                        <i class="bi bi-envelope text-muted me-2"></i>
+                        <span class="text-muted">البريد:</span>
+                        <strong class="ms-1">{{ user.email }}</strong>
+                    </div>
+                    {% endif %}
+                    {% if user.phone %}
+                    <div class="mb-2">
+                        <i class="bi bi-telephone text-muted me-2"></i>
+                        <span class="text-muted">الجوال:</span>
+                        <strong class="ms-1">{{ user.phone }}</strong>
+                    </div>
+                    {% endif %}
+                    <div class="mb-2">
+                        <i class="bi bi-building text-muted me-2"></i>
+                        <span class="text-muted">الشركة:</span>
+                        <strong class="ms-1">{{ user.tenant.name|default:"—" }}</strong>
+                    </div>
+                </div>
+                <hr>
+                {# حالة الواتساب #}
+                {% if user.whatsapp_number and user.callmebot_api_key %}
+                <div class="d-flex align-items-center gap-2 justify-content-center text-success small">
+                    <i class="bi bi-check-circle-fill fs-5"></i>
+                    <span>تنبيهات الواتساب مفعّلة<br><small class="text-muted">{{ user.whatsapp_number }}</small></span>
+                </div>
+                {% else %}
+                <div class="d-flex align-items-center gap-2 justify-content-center text-warning small">
+                    <i class="bi bi-exclamation-circle-fill fs-5"></i>
+                    <span>تنبيهات الواتساب غير مفعّلة</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {# ===== العمود الأيسر: التبويبات ===== #}
+    <div class="col-lg-8">
+        <ul class="nav nav-tabs mb-3" id="profileTabs">
+            <li class="nav-item">
+                <a class="nav-link {% if not active_tab or active_tab == 'info' %}active{% endif %}"
+                   href="#info" data-bs-toggle="tab">
+                    <i class="bi bi-person-circle me-1"></i> المعلومات الشخصية
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if active_tab == 'password' %}active{% endif %}"
+                   href="#password" data-bs-toggle="tab">
+                    <i class="bi bi-key me-1"></i> كلمة المرور
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if active_tab == 'whatsapp' %}active{% endif %}"
+                   href="#whatsapp" data-bs-toggle="tab">
+                    <i class="bi bi-whatsapp me-1" style="color:#25D366"></i> الواتساب
+                </a>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+
+            {# ===== تبويب المعلومات الشخصية ===== #}
+            <div class="tab-pane fade {% if not password_success and not password_form.errors %}show active{% endif %}" id="info">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-pencil-square me-1"></i> تعديل المعلومات الشخصية
+                    </div>
+                    <div class="card-body">
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="profile">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">{{ profile_form.first_name.label }}</label>
+                                    {{ profile_form.first_name }}
+                                    {% if profile_form.first_name.errors %}
+                                    <div class="text-danger small">{{ profile_form.first_name.errors|join:", " }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">{{ profile_form.last_name.label }}</label>
+                                    {{ profile_form.last_name }}
+                                    {% if profile_form.last_name.errors %}
+                                    <div class="text-danger small">{{ profile_form.last_name.errors|join:", " }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">{{ profile_form.email.label }}</label>
+                                    {{ profile_form.email }}
+                                    {% if profile_form.email.errors %}
+                                    <div class="text-danger small">{{ profile_form.email.errors|join:", " }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">{{ profile_form.phone.label }}</label>
+                                    {{ profile_form.phone }}
+                                    {% if profile_form.phone.errors %}
+                                    <div class="text-danger small">{{ profile_form.phone.errors|join:", " }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-12">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-save me-1"></i> حفظ التغييرات
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            {# ===== تبويب كلمة المرور ===== #}
+            <div class="tab-pane fade {% if active_tab == 'password' or password_success or password_form.errors %}show active{% endif %}" id="password">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-shield-lock me-1"></i> تغيير كلمة المرور
+                    </div>
+                    <div class="card-body">
+                        {% if password_success %}
+                        <div class="alert alert-success d-flex align-items-center gap-2 mb-3">
+                            <i class="bi bi-check-circle-fill fs-5"></i>
+                            <span>تم تغيير كلمة المرور بنجاح ✓</span>
+                        </div>
+                        {% endif %}
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="password">
+                            <div class="mb-3">
+                                <label class="form-label">{{ password_form.current_password.label }}</label>
+                                <div class="input-group">
+                                    {{ password_form.current_password }}
+                                    <button type="button" class="btn btn-outline-secondary toggle-pw" data-target="id_current_password">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
+                                {% if password_form.current_password.errors %}
+                                <div class="text-danger small mt-1">{{ password_form.current_password.errors|join:", " }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">{{ password_form.new_password.label }}</label>
+                                <div class="input-group">
+                                    {{ password_form.new_password }}
+                                    <button type="button" class="btn btn-outline-secondary toggle-pw" data-target="id_new_password">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
+                                {% if password_form.new_password.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for e in password_form.new_password.errors %}{{ e }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="mb-4">
+                                <label class="form-label">{{ password_form.confirm_password.label }}</label>
+                                <div class="input-group">
+                                    {{ password_form.confirm_password }}
+                                    <button type="button" class="btn btn-outline-secondary toggle-pw" data-target="id_confirm_password">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
+                                {% if password_form.confirm_password.errors %}
+                                <div class="text-danger small mt-1">{{ password_form.confirm_password.errors|join:", " }}</div>
+                                {% endif %}
+                            </div>
+                            <button type="submit" class="btn btn-warning">
+                                <i class="bi bi-key me-1"></i> تغيير كلمة المرور
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            {# ===== تبويب الواتساب ===== #}
+            <div class="tab-pane fade {% if active_tab == 'whatsapp' %}show active{% endif %}" id="whatsapp">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-whatsapp me-1" style="color:#25D366"></i> إعداد تنبيهات الواتساب
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info d-flex gap-2 mb-4">
+                            <i class="bi bi-info-circle-fill flex-shrink-0 mt-1"></i>
+                            <div>
+                                ستصلك رسائل واتساب تذكر بمواعيد الزيارات والأحداث قبل <strong>24 ساعة</strong> تلقائياً.
+                                يجب أن تفعّل الخدمة أولاً من خلال الخطوات أدناه.
+                            </div>
+                        </div>
+
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <form method="post">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="whatsapp">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">رقم الواتساب</label>
+                                        <input type="text" name="whatsapp_number" class="form-control"
+                                               value="{{ user.whatsapp_number }}" placeholder="966501234567">
+                                        <div class="form-text">بدون + أو 00 — مثال: 966501234567</div>
+                                    </div>
+                                    <div class="mb-4">
+                                        <label class="form-label fw-semibold">CallMeBot API Key</label>
+                                        <input type="text" name="callmebot_api_key" class="form-control"
+                                               value="{{ user.callmebot_api_key }}" placeholder="1234567">
+                                        <div class="form-text">ستحصل عليه بعد إرسال رسالة التفعيل</div>
+                                    </div>
+                                    <button type="submit" class="btn btn-success w-100">
+                                        <i class="bi bi-save me-1"></i> حفظ إعدادات الواتساب
+                                    </button>
+                                </form>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="card border-0 bg-light h-100">
+                                    <div class="card-body">
+                                        <h6 class="fw-bold mb-3"><i class="bi bi-list-ol me-1"></i> خطوات التفعيل</h6>
+                                        <ol class="mb-0 small">
+                                            <li class="mb-3">
+                                                افتح الواتساب وأضف هذا الرقم كجهة اتصال:
+                                                <div class="mt-1 p-2 bg-white rounded border text-center">
+                                                    <code class="fs-6">+34 623 78 95 80</code>
+                                                </div>
+                                            </li>
+                                            <li class="mb-3">
+                                                أرسل له هذه الرسالة بالضبط:
+                                                <div class="mt-1 p-2 bg-white rounded border">
+                                                    <code>I allow callmebot to send me messages</code>
+                                                </div>
+                                            </li>
+                                            <li class="mb-3">
+                                                سيردّ عليك برسالة فيها <strong>API Key</strong> — انسخه والصقه في الحقل
+                                            </li>
+                                            <li>احفظ الإعدادات</li>
+                                        </ol>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const hash = window.location.hash;
+    if (hash) {
+        const tab = document.querySelector(`[href="${hash}"]`);
+        if (tab) new bootstrap.Tab(tab).show();
+    }
+
+    document.querySelectorAll('.toggle-pw').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var input = document.getElementById(this.dataset.target);
+            var icon = this.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.replace('bi-eye', 'bi-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.replace('bi-eye-slash', 'bi-eye');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

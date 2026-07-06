@@ -1,0 +1,201 @@
+{% extends 'base.html' %}
+{% block title %}{{ client.name }}{% endblock %}
+{% block page_title %}ملف العميل — {{ client.name }}{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+
+    <!-- بيانات العميل -->
+    <div class="col-md-8">
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-person-badge me-1"></i> بيانات العميل</span>
+                <a href="{% url 'client_edit' client.pk %}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-pencil me-1"></i> تعديل
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="text-muted small">الاسم</label>
+                        <p class="fw-semibold mb-1">{{ client.name }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small">اسم الشركة</label>
+                        <p class="fw-semibold mb-1">{{ client.company|default:"—" }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small">المدينة</label>
+                        <p class="mb-1">{{ client.city|default:"—" }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small">الحي</label>
+                        <p class="mb-1">{{ client.district|default:"—" }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small">رقم التواصل</label>
+                        <p class="mb-1">{{ client.phone|default:"—" }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small">البريد الإلكتروني</label>
+                        <p class="mb-1">{{ client.email|default:"—" }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small">المسئول</label>
+                        <p class="mb-1">{{ client.responsible_person|default:"—" }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small">الوظيفة</label>
+                        <p class="mb-1">{{ client.job_title|default:"—" }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small">النشاط</label>
+                        <p class="mb-1">{{ client.activity|default:"—" }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small">العنوان</label>
+                        <p class="mb-1">{{ client.address|default:"—" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- الزيارات -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-geo-alt me-1"></i> الزيارات ({{ client.visits.count }})</span>
+                <a href="{% url 'visit_create' %}?client={{ client.pk }}" class="btn btn-sm btn-outline-success">
+                    <i class="bi bi-plus-lg me-1"></i> زيارة جديدة
+                </a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead class="table-light">
+                        <tr><th>التاريخ</th><th>الغرض</th><th>الحالة</th><th>النتيجة</th></tr>
+                    </thead>
+                    <tbody>
+                    {% for visit in client.visits.all %}
+                        <tr>
+                            <td>{{ visit.visit_date|date:"Y-m-d H:i" }}</td>
+                            <td>{{ visit.purpose|default:"—" }}</td>
+                            <td>
+                                {% if visit.status == 'done' %}<span class="badge bg-success">منجزة</span>
+                                {% elif visit.status == 'planned' %}<span class="badge bg-warning text-dark">مجدولة</span>
+                                {% else %}<span class="badge bg-danger">ملغاة</span>{% endif %}
+                            </td>
+                            <td><small>{{ visit.result|default:"—"|truncatechars:40 }}</small></td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="4" class="text-center text-muted py-3">لا توجد زيارات</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ملاحظات -->
+        <div class="card">
+            <div class="card-header"><i class="bi bi-chat-left-text me-1"></i> الملاحظات</div>
+            <div class="card-body">
+                <form method="post" action="{% url 'client_detail' client.pk %}">
+                    {% csrf_token %}
+                    <div class="d-flex gap-2">
+                        <textarea name="note" class="form-control form-control-sm" rows="2" placeholder="أضف ملاحظة..."></textarea>
+                        <button class="btn btn-primary btn-sm px-3">إضافة</button>
+                    </div>
+                </form>
+                <hr>
+                {% for note in client.client_notes.all %}
+                <div class="border-bottom pb-2 mb-2">
+                    <small class="text-muted">{{ note.created_by.get_full_name|default:note.created_by.username }} — {{ note.created_at|date:"Y-m-d H:i" }}</small>
+                    <p class="mb-0 mt-1">{{ note.note }}</p>
+                </div>
+                {% empty %}
+                <p class="text-muted small text-center">لا توجد ملاحظات</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- الشريط الجانبي -->
+    <div class="col-md-4">
+        <div class="card mb-3">
+            <div class="card-header"><i class="bi bi-people me-1"></i> المسندون</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="text-muted small d-block">المندوب المسئول</label>
+                    {% if client.assigned_sales %}
+                    <span class="badge bg-success fs-6">{{ client.assigned_sales.get_full_name|default:client.assigned_sales.username }}</span>
+                    {% else %}<span class="text-muted">غير محدد</span>{% endif %}
+                </div>
+                <div class="mb-3">
+                    <label class="text-muted small d-block">المحاسب المسئول</label>
+                    {% if client.assigned_accountant %}
+                    <span class="badge bg-primary fs-6">{{ client.assigned_accountant.get_full_name|default:client.assigned_accountant.username }}</span>
+                    {% else %}<span class="text-muted">غير محدد</span>{% endif %}
+                </div>
+                <div>
+                    <label class="text-muted small d-block">المراجع المسئول</label>
+                    {% if client.assigned_review %}
+                    <span class="badge fs-6" style="background:#6a1b9a">{{ client.assigned_review.get_full_name|default:client.assigned_review.username }}</span>
+                    {% else %}<span class="text-muted">غير محدد</span>{% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- أحداث التقويم -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-calendar3 me-1"></i> الأحداث</span>
+                <a href="{% url 'event_create' %}?client={{ client.pk }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-plus-lg"></i>
+                </a>
+            </div>
+            <div class="card-body p-2">
+                {% for event in client.events.all %}
+                <div class="d-flex align-items-center gap-2 p-2 border-bottom">
+                    <i class="bi bi-calendar-event text-primary"></i>
+                    <div>
+                        <div class="small fw-semibold">{{ event.title }}</div>
+                        <div class="text-muted" style="font-size:11px">{{ event.start_datetime|date:"Y-m-d H:i" }}</div>
+                    </div>
+                    {% if event.is_done %}<i class="bi bi-check-circle-fill text-success ms-auto"></i>{% endif %}
+                </div>
+                {% empty %}
+                <p class="text-muted small text-center py-2">لا توجد أحداث</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- المرفقات -->
+        <div class="card">
+            <div class="card-header"><i class="bi bi-paperclip me-1"></i> المرفقات</div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data" action="{% url 'client_detail' client.pk %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="upload">
+                    <div class="d-flex gap-2">
+                        <input type="file" name="file" class="form-control form-control-sm">
+                        <button class="btn btn-outline-primary btn-sm px-3">رفع</button>
+                    </div>
+                </form>
+                <hr>
+                {% for att in client.attachments.all %}
+                <div class="d-flex align-items-center gap-2 py-1 border-bottom">
+                    <i class="bi bi-file-earmark text-muted flex-shrink-0"></i>
+                    <a href="{{ att.file.url }}" target="_blank" class="small text-truncate flex-grow-1">{{ att.name }}</a>
+                    <form method="post" action="{% url 'attachment_delete' att.pk %}" onsubmit="return confirm('حذف هذا المرفق؟')">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger border-0 p-0 px-1" title="حذف">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                </div>
+                {% empty %}
+                <p class="text-muted small text-center">لا توجد مرفقات</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

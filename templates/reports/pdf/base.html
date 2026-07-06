@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Cairo', Arial, sans-serif; font-size: 11px; color: #222; direction: rtl; }
+  .header { background: #1a3a5c; color: white; padding: 12px 20px; margin-bottom: 16px; }
+  .header h1 { font-size: 16px; margin-bottom: 2px; }
+  .header small { font-size: 10px; opacity: 0.8; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+  th { background: #1a3a5c; color: white; padding: 6px 8px; text-align: right; font-size: 10px; }
+  td { padding: 5px 8px; border-bottom: 1px solid #eee; }
+  tr:nth-child(even) td { background: #f8f9fa; }
+  .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 9px; }
+  .bg-success { background: #198754; color: white; }
+  .bg-danger  { background: #dc3545; color: white; }
+  .bg-primary { background: #0d6efd; color: white; }
+  .bg-warning { background: #ffc107; color: #333; }
+  .bg-secondary { background: #6c757d; color: white; }
+  .summary { display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+  .kpi { background: #f0f4ff; border-radius: 6px; padding: 10px 16px; min-width: 120px; }
+  .kpi .val { font-size: 18px; font-weight: bold; color: #1a3a5c; }
+  .kpi .lbl { font-size: 9px; color: #666; }
+  .footer { text-align: center; font-size: 9px; color: #999; margin-top: 20px; border-top: 1px solid #eee; padding-top: 8px; }
+</style>
+</head>
+<body>
+<div class="header">
+    <h1>{% block title %}تقرير{% endblock %}</h1>
+    <small>تاريخ الطباعة: {% now "Y/m/d H:i" %} | المستخدم: {{ user.get_full_name|default:user.username }}</small>
+</div>
+{% block content %}{% endblock %}
+<div class="footer">نظام إدارة العملاء — جميع الحقوق محفوظة</div>
+</body>
+</html>

@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% block title %}قسم المراجعة{% endblock %}
+{% block page_title %}قسم المراجعة{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <form method="get" class="d-flex gap-2 flex-wrap align-items-center">
+        <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="اسم العميل أو الشركة..." style="width:200px;">
+        <select name="stage" class="form-select form-select-sm" style="width:auto;">
+            <option value="">كل المراحل</option>
+            {% for code, label in stage_choices %}
+            <option value="{{ code }}" {% if stage_filter == code %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <select name="status" class="form-select form-select-sm" style="width:auto;">
+            <option value="">كل الحالات</option>
+            {% for code, label in status_choices %}
+            <option value="{{ code }}" {% if status_filter == code %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <button class="btn btn-outline-secondary btn-sm">بحث</button>
+        {% if q or stage_filter or status_filter %}
+        <a href="{% url 'workflow_list' %}" class="btn btn-outline-secondary btn-sm">إلغاء</a>
+        {% endif %}
+    </form>
+    <div class="d-flex gap-2">
+        <a href="{% url 'workflow_report' %}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-bar-chart-line me-1"></i> التقارير
+        </a>
+        {% if user.is_admin %}
+        <a href="{% url 'workflow_client_create' %}" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-lg me-1"></i> إضافة عميل
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size:0.875rem">
+            <thead class="table-dark">
+                <tr>
+                    <th>العميل</th>
+                    <th>الشركة</th>
+                    <th>المرحلة الحالية</th>
+                    <th>التعاقد</th>
+                    <th>المراجعة</th>
+                    <th>الخطابات</th>
+                    <th>الرفع</th>
+                    <th>إجمالي الأيام</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for client in clients %}
+            {% with stages=client.stages.all %}
+            <tr>
+                <td class="fw-semibold">
+                    <a href="{% url 'workflow_detail' client.pk %}" class="text-decoration-none">{{ client.name }}</a>
+                </td>
+                <td class="text-muted">{{ client.company|default:"—" }}</td>
+                <td>
+                    {% with cs=client.current_stage %}
+                    {% if cs %}
+                    <span class="badge bg-{{ cs.get_status_color }}">{{ cs.get_stage_display }}</span>
+                    {% if cs.due_status == 'overdue' %}
+                    <span class="badge bg-danger ms-1"><i class="bi bi-exclamation-triangle"></i> متأخرة</span>
+                    {% elif cs.due_status == 'near' %}
+                    <span class="badge bg-warning text-dark ms-1"><i class="bi bi-clock"></i> قريبة</span>
+                    {% endif %}
+                    {% else %}
+                    <span class="badge bg-success">مكتملة</span>
+                    {% endif %}
+                    {% endwith %}
+                </td>
+                {% for s in stages %}
+                <td class="text-center">
+                    <span class="badge bg-{{ s.get_status_color }}">{{ s.get_status_display }}</span>
+                    {% if s.days_remaining is not None %}
+                    <div class="small mt-1
+                        {% if s.due_status == 'overdue' %}text-danger
+                        {% elif s.due_status == 'near' %}text-warning
+                        {% else %}text-muted{% endif %}">
+                        {% if s.days_remaining < 0 %}
+                        تأخير {{ s.days_remaining|stringformat:"d"|cut:"-" }} يوم
+                        {% else %}
+                        {{ s.days_remaining }} يوم
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </td>
+                {% endfor %}
+                <td class="text-center">
+                    {% if client.total_days is not None %}
+                    <span class="badge bg-light text-dark border">{{ client.total_days }} يوم</span>
+                    {% else %}—{% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'workflow_detail' client.pk %}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-eye"></i>
+                    </a>
+                </td>
+            </tr>
+            {% endwith %}
+            {% empty %}
+            <tr>
+                <td colspan="9" class="text-center text-muted py-5">
+                    <i class="bi bi-inbox fs-2 d-block mb-2 opacity-50"></i>
+                    لا يوجد عملاء في قسم المراجعة
+                    {% if user.is_admin %}
+                    — <a href="{% url 'workflow_client_create' %}">أضف عميلاً</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

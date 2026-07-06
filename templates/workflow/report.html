@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% block title %}تقارير المراجعة{% endblock %}
+{% block page_title %}تقارير المراجعة{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0"><i class="bi bi-bar-chart-line me-2"></i>تقرير حالة العملاء</h5>
+    <a href="{% url 'workflow_list' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-right me-1"></i> رجوع
+    </a>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle mb-0" style="font-size:0.85rem">
+            <thead class="table-dark text-center">
+                <tr>
+                    <th rowspan="2" class="align-middle">العميل</th>
+                    <th rowspan="2" class="align-middle">بداية المعاملة</th>
+                    {% for code, label in stage_choices %}
+                    <th colspan="4" class="border-start">{{ label }}</th>
+                    {% endfor %}
+                    <th rowspan="2" class="align-middle">إجمالي الأيام</th>
+                </tr>
+                <tr>
+                    {% for code, label in stage_choices %}
+                    <th class="border-start small fw-normal">الحالة</th>
+                    <th class="small fw-normal">بداية</th>
+                    <th class="small fw-normal">نهاية</th>
+                    <th class="small fw-normal">المدة / الاستحقاق</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+            {% for client in clients %}
+            {% with stages=client.stages.all %}
+            <tr>
+                <td class="fw-semibold">
+                    <a href="{% url 'workflow_detail' client.pk %}" class="text-decoration-none">{{ client.name }}</a>
+                    {% if client.company %}<div class="text-muted small">{{ client.company }}</div>{% endif %}
+                </td>
+                <td class="text-center small">{{ client.start_date|default:"—" }}</td>
+
+                {% for stage in stages %}
+                <td class="text-center border-start">
+                    <span class="badge bg-{{ stage.get_status_color }}">{{ stage.get_status_display }}</span>
+                    {% if stage.due_status == 'overdue' %}
+                    <span class="badge bg-danger d-block mt-1"><i class="bi bi-exclamation-triangle"></i> متأخرة</span>
+                    {% elif stage.due_status == 'near' %}
+                    <span class="badge bg-warning text-dark d-block mt-1"><i class="bi bi-clock"></i> قريبة</span>
+                    {% endif %}
+                </td>
+                <td class="text-center small text-muted">{{ stage.start_date|default:"—" }}</td>
+                <td class="text-center small text-muted">{{ stage.end_date|default:"—" }}</td>
+                <td class="text-center small">
+                    {% if stage.status == 'completed' and stage.days_in_stage is not None %}
+                    <span class="text-success">{{ stage.days_in_stage }} يوم</span>
+                    {% elif stage.due_date and stage.status != 'completed' %}
+                        <div class="text-muted">{{ stage.due_date }}</div>
+                        {% if stage.days_remaining is not None %}
+                        <div class="small
+                            {% if stage.due_status == 'overdue' %}text-danger fw-bold
+                            {% elif stage.due_status == 'near' %}text-warning fw-bold
+                            {% else %}text-muted{% endif %}">
+                            {% if stage.days_remaining < 0 %}
+                            تأخير {{ stage.days_remaining|cut:"-" }} يوم
+                            {% elif stage.days_remaining == 0 %}
+                            اليوم!
+                            {% else %}
+                            {{ stage.days_remaining }} يوم متبقي
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    {% else %}
+                    —
+                    {% endif %}
+                </td>
+                {% endfor %}
+
+                <td class="text-center fw-bold">
+                    {% if client.total_days is not None %}
+                    <span class="badge bg-light text-dark border">{{ client.total_days }} يوم</span>
+                    {% else %}—{% endif %}
+                </td>
+            </tr>
+            {% endwith %}
+            {% empty %}
+            <tr>
+                <td colspan="18" class="text-center text-muted py-4">لا يوجد بيانات</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

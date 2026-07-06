@@ -1,0 +1,157 @@
+{% extends "superadmin/base.html" %}
+{% block title %}{{ tenant.name }}{% endblock %}
+{% block page_title %}{{ tenant.name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex gap-2 mb-3 flex-wrap">
+    <a href="{% url 'tenant_edit' tenant.pk %}" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-pencil me-1"></i> تعديل
+    </a>
+    <form method="post" action="{% url 'tenant_toggle' tenant.pk %}" class="d-inline">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm {% if tenant.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %}"
+                onclick="return confirm('هل أنت متأكد؟')">
+            <i class="bi bi-{% if tenant.is_active %}pause-circle{% else %}play-circle{% endif %} me-1"></i>
+            {% if tenant.is_active %}تعطيل{% else %}تفعيل{% endif %}
+        </button>
+    </form>
+    <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#extendModal">
+        <i class="bi bi-calendar-plus me-1"></i> تمديد الاشتراك
+    </button>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-building me-1"></i> معلومات الشركة</div>
+            <div class="card-body">
+                <table class="table table-sm table-borderless mb-0">
+                    <tr><td class="text-muted" width="40%">الاسم</td><td class="fw-semibold">{{ tenant.name }}</td></tr>
+                    <tr><td class="text-muted">Slug</td><td><code>{{ tenant.slug }}</code></td></tr>
+                    <tr><td class="text-muted">المسؤول</td><td>{{ tenant.contact_person|default:"—" }}</td></tr>
+                    <tr><td class="text-muted">الجوال</td><td>{{ tenant.phone|default:"—" }}</td></tr>
+                    <tr><td class="text-muted">البريد</td><td>{{ tenant.email|default:"—" }}</td></tr>
+                    <tr><td class="text-muted">العنوان</td><td>{{ tenant.address|default:"—" }}</td></tr>
+                    <tr><td class="text-muted">تاريخ الإنشاء</td><td>{{ tenant.created_at|date:"Y-m-d" }}</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-credit-card me-1"></i> الاشتراك</div>
+            <div class="card-body">
+                <div class="mb-3 text-center">
+                    {% if not tenant.is_active %}
+                        <span class="badge fs-6 bg-secondary px-3 py-2">معطّل</span>
+                    {% elif tenant.is_expired %}
+                        <span class="badge fs-6 bg-danger px-3 py-2">منتهي الاشتراك</span>
+                    {% elif tenant.days_remaining <= 7 %}
+                        <span class="badge fs-6 bg-warning text-dark px-3 py-2">ينتهي خلال {{ tenant.days_remaining }} يوم</span>
+                    {% else %}
+                        <span class="badge fs-6 bg-success px-3 py-2">نشط — يتبقى {{ tenant.days_remaining }} يوم</span>
+                    {% endif %}
+                </div>
+                <table class="table table-sm table-borderless mb-0">
+                    <tr><td class="text-muted" width="45%">الباقة</td>
+                        <td>{% if tenant.subscription_plan == 'monthly' %}شهري{% elif tenant.subscription_plan == 'yearly' %}سنوي{% else %}مخصص{% endif %}</td></tr>
+                    <tr><td class="text-muted">تاريخ البداية</td><td>{{ tenant.subscription_start|date:"Y-m-d"|default:"—" }}</td></tr>
+                    <tr><td class="text-muted">تاريخ الانتهاء</td><td>{{ tenant.subscription_end|date:"Y-m-d"|default:"—" }}</td></tr>
+                    <tr><td class="text-muted">الحد الأقصى للمستخدمين</td><td>{{ tenant.max_users }}</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-people me-1"></i> مستخدمو الشركة</div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light">
+                        <tr><th>المستخدم</th><th>الاسم</th><th>الدور</th><th>آخر دخول</th><th>الحالة</th></tr>
+                    </thead>
+                    <tbody>
+                    {% for u in users %}
+                    <tr>
+                        <td><code>{{ u.username }}</code></td>
+                        <td>{{ u.get_full_name|default:"—" }}</td>
+                        <td>
+                            {% if u.is_admin %}<span class="badge bg-primary">مدير</span>
+                            {% elif u.is_review %}<span class="badge bg-info text-dark">مراجع</span>
+                            {% elif u.is_accountant %}<span class="badge bg-secondary">محاسب</span>
+                            {% else %}<span class="badge bg-light text-dark border">مبيعات</span>{% endif %}
+                        </td>
+                        <td class="text-muted small">{{ u.last_login|date:"Y-m-d"|default:"—" }}</td>
+                        <td>{% if u.is_active %}<span class="badge bg-success">نشط</span>{% else %}<span class="badge bg-secondary">معطّل</span>{% endif %}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center text-muted py-3">لا يوجد مستخدمون</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Extend Modal -->
+<div class="modal fade" id="extendModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'tenant_extend' tenant.pk %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">تمديد الاشتراك — {{ tenant.name }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">نوع الباقة</label>
+                        <select name="subscription_plan" class="form-select">
+                            <option value="monthly" {% if tenant.subscription_plan == 'monthly' %}selected{% endif %}>شهري</option>
+                            <option value="yearly" {% if tenant.subscription_plan == 'yearly' %}selected{% endif %}>سنوي</option>
+                            <option value="custom" {% if tenant.subscription_plan == 'custom' %}selected{% endif %}>مخصص</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">تاريخ الانتهاء الجديد</label>
+                        <input type="date" name="subscription_end" class="form-control" id="extEnd"
+                               value="{{ tenant.subscription_end|date:'Y-m-d'|default:'' }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">الحد الأقصى للمستخدمين</label>
+                        <input type="number" name="max_users" class="form-control" min="1" value="{{ tenant.max_users }}">
+                    </div>
+                    <div class="d-flex gap-2">
+                        <span class="text-muted small align-self-center">تحديد سريع:</span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="extAddDays(30)">+شهر</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="extAddDays(90)">+3 أشهر</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="extAddDays(365)">+سنة</button>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-lg me-1"></i> تمديد
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function extAddDays(n) {
+    const el = document.getElementById('extEnd');
+    const base = el.value ? new Date(el.value) : new Date();
+    base.setDate(base.getDate() + n);
+    el.value = base.toISOString().slice(0,10);
+}
+</script>
+{% endblock %}

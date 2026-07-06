@@ -1,0 +1,233 @@
+{% extends 'base.html' %}
+{% block title %}التقويم{% endblock %}
+{% block page_title %}التقويم{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-calendar3 me-1"></i> الأحداث القادمة
+                    <span class="badge bg-primary ms-1">{{ upcoming.count }}</span>
+                </span>
+                <a href="{% url 'event_create' %}" class="btn btn-primary btn-sm">
+                    <i class="bi bi-plus-lg me-1"></i> إضافة حدث
+                </a>
+            </div>
+            <div class="list-group list-group-flush">
+            {% for event in upcoming %}
+                <div class="list-group-item d-flex align-items-start gap-3 py-3">
+                    <div class="text-center" style="min-width:48px;">
+                        <div class="fw-bold text-primary fs-5 lh-1">{{ event.start_datetime|date:"d" }}</div>
+                        <div class="text-muted small">{{ event.start_datetime|date:"M" }}</div>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <span class="fw-semibold">{{ event.title }}</span>
+                            <span class="badge ms-2
+                                {% if event.event_type == 'visit' %}bg-success
+                                {% elif event.event_type == 'meeting' %}bg-primary
+                                {% elif event.event_type == 'followup' %}bg-warning text-dark
+                                {% else %}bg-secondary{% endif %}">
+                                {{ event.get_event_type_display }}
+                            </span>
+                        </div>
+                        <div class="text-muted small mt-1">
+                            <i class="bi bi-clock me-1"></i>{{ event.start_datetime|date:"H:i" }}
+                            {% if event.client %}
+                            &nbsp;|&nbsp;<i class="bi bi-person me-1"></i>{{ event.client.name }}
+                            {% endif %}
+                            {% if event.source %}
+                            &nbsp;|&nbsp;<i class="bi bi-diagram-3 me-1"></i>{{ event.get_source_display }}
+                            {% endif %}
+                            {% if request.user.is_admin and event.assigned_to %}
+                            &nbsp;|&nbsp;<i class="bi bi-person-badge me-1"></i>{{ event.assigned_to.get_full_name|default:event.assigned_to.username }}
+                            {% endif %}
+                        </div>
+                        {% if event.notes %}
+                        <div class="text-muted small mt-1">{{ event.notes|truncatechars:80 }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
+                            <i class="bi bi-three-dots-vertical"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-start shadow-sm border-0" style="min-width:170px;font-size:0.875rem">
+                            <li>
+                                <button type="button" class="dropdown-item text-success"
+                                        data-bs-toggle="modal" data-bs-target="#modalDone{{ event.pk }}">
+                                    <i class="bi bi-check-circle me-2"></i> منجزة
+                                </button>
+                            </li>
+                            <li>
+                                <button type="button" class="dropdown-item text-primary"
+                                        data-bs-toggle="modal" data-bs-target="#modalReschedule{{ event.pk }}">
+                                    <i class="bi bi-calendar-event me-2"></i> إعادة جدولة
+                                </button>
+                            </li>
+                            <li><hr class="dropdown-divider my-1"></li>
+                            <li>
+                                <button type="button" class="dropdown-item text-danger"
+                                        data-bs-toggle="modal" data-bs-target="#modalCancel{{ event.pk }}">
+                                    <i class="bi bi-x-circle me-2"></i> إلغاء الموعد
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Modal: منجزة -->
+                    <div class="modal fade" id="modalDone{{ event.pk }}" tabindex="-1">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content">
+                                <form method="post" action="{% url 'event_toggle_done' event.pk %}">
+                                    {% csrf_token %}
+                                    <div class="modal-header">
+                                        <h6 class="modal-title"><i class="bi bi-check-circle text-success me-2"></i>تأكيد الإنجاز</h6>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p class="text-muted mb-3">{{ event.title }}</p>
+                                        <label class="form-label">ملاحظات <span class="text-muted small">(اختياري)</span></label>
+                                        <textarea name="notes" class="form-control" rows="3" placeholder="أضف ملاحظات عن نتيجة الحدث...">{{ event.notes }}</textarea>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">إلغاء</button>
+                                        <button type="submit" class="btn btn-success btn-sm">تأكيد الإنجاز</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modal: إعادة جدولة -->
+                    <div class="modal fade" id="modalReschedule{{ event.pk }}" tabindex="-1">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content">
+                                <form method="post" action="{% url 'event_reschedule' event.pk %}">
+                                    {% csrf_token %}
+                                    <div class="modal-header">
+                                        <h6 class="modal-title"><i class="bi bi-calendar-event text-primary me-2"></i>إعادة جدولة</h6>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p class="text-muted mb-2">{{ event.title }}</p>
+                                        <div class="mb-3">
+                                            <label class="form-label">الوقت الجديد *</label>
+                                            <input type="datetime-local" name="start_datetime" class="form-control" required
+                                                   value="{{ event.start_datetime|date:'Y-m-d' }}T{{ event.start_datetime|date:'H:i' }}">
+                                        </div>
+                                        <div>
+                                            <label class="form-label">سبب إعادة الجدولة <span class="text-muted small">(اختياري)</span></label>
+                                            <textarea name="reschedule_note" class="form-control" rows="2" placeholder="اكتب السبب..."></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">إلغاء</button>
+                                        <button type="submit" class="btn btn-primary btn-sm">تأكيد إعادة الجدولة</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modal: إلغاء الموعد -->
+                    <div class="modal fade" id="modalCancel{{ event.pk }}" tabindex="-1">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content">
+                                <form method="post" action="{% url 'event_cancel' event.pk %}">
+                                    {% csrf_token %}
+                                    <div class="modal-header">
+                                        <h6 class="modal-title"><i class="bi bi-x-circle text-danger me-2"></i>إلغاء الموعد</h6>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p class="text-muted mb-3">{{ event.title }}</p>
+                                        <label class="form-label">سبب الإلغاء <span class="text-muted small">(اختياري)</span></label>
+                                        <textarea name="notes" class="form-control" rows="2" placeholder="اكتب سبب الإلغاء..."></textarea>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">رجوع</button>
+                                        <button type="submit" class="btn btn-danger btn-sm">تأكيد الإلغاء</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="text-center text-muted py-5">
+                    <i class="bi bi-calendar-check fs-1 d-block mb-2 opacity-50"></i>
+                    لا توجد أحداث قادمة
+                </div>
+            {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-3 border-success">
+            <div class="card-body text-center text-success py-3">
+                <i class="bi bi-info-circle me-1"></i>
+                عند الضغط على <strong>✓</strong> ينتقل الحدث تلقائياً إلى
+                <a href="{% url 'visits_list' %}" class="fw-bold text-success">سجل الزيارات</a>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header"><i class="bi bi-funnel me-1"></i> فلتر</div>
+            <div class="card-body">
+                <form method="get">
+                    <div class="mb-3">
+                        <label class="form-label small">نوع الحدث</label>
+                        <select name="type" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <option value="">الكل</option>
+                            <option value="meeting" {% if request.GET.type == 'meeting' %}selected{% endif %}>اجتماع</option>
+                            <option value="visit" {% if request.GET.type == 'visit' %}selected{% endif %}>زيارة</option>
+                            <option value="followup" {% if request.GET.type == 'followup' %}selected{% endif %}>متابعة</option>
+                            <option value="reminder" {% if request.GET.type == 'reminder' %}selected{% endif %}>تذكير</option>
+                        </select>
+                    </div>
+                    {% if request.user.is_admin %}
+                    <div class="mb-3">
+                        <label class="form-label small">القسم</label>
+                        <select name="source" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <option value="">الكل</option>
+                            <option value="review" {% if request.GET.source == 'review' %}selected{% endif %}>المراجعة</option>
+                            <option value="sales" {% if request.GET.source == 'sales' %}selected{% endif %}>المناديب</option>
+                            <option value="accounts" {% if request.GET.source == 'accounts' %}selected{% endif %}>الحسابات</option>
+                        </select>
+                    </div>
+                    {% if source_users %}
+                    <div class="mb-3">
+                        <label class="form-label small">الموظف</label>
+                        <select name="assigned" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <option value="">الكل</option>
+                            {% for u in source_users %}
+                            <option value="{{ u.pk }}" {% if request.GET.assigned == u.pk|stringformat:"s" %}selected{% endif %}>
+                                {{ u.get_full_name|default:u.username }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <div class="mb-3">
+                        <label class="form-label small">القسم</label>
+                        <select name="source" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <option value="">الكل</option>
+                            <option value="review" {% if request.GET.source == 'review' %}selected{% endif %}>المراجعة</option>
+                            <option value="sales" {% if request.GET.source == 'sales' %}selected{% endif %}>المناديب</option>
+                            <option value="accounts" {% if request.GET.source == 'accounts' %}selected{% endif %}>الحسابات</option>
+                        </select>
+                    </div>
+                    {% endif %}
+                    {% if request.GET.type or request.GET.source %}
+                    <a href="{% url 'calendar_view' %}" class="btn btn-outline-secondary btn-sm w-100">
+                        <i class="bi bi-x-lg me-1"></i> إلغاء الفلتر
+                    </a>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

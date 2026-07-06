@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 800px;">
+    <div class="card-header"><i class="bi bi-person-plus me-1"></i> {{ title }}</div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">الاسم *</label>
+                    {{ form.name }}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">اسم الشركة</label>
+                    {{ form.company }}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">المدينة</label>
+                    {{ form.city }}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">الحي</label>
+                    {{ form.district }}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">رقم التواصل</label>
+                    {{ form.phone }}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">البريد الإلكتروني</label>
+                    {{ form.email }}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">المسئول</label>
+                    {{ form.responsible_person }}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">الوظيفة</label>
+                    {{ form.job_title }}
+                </div>
+                {% if form.activity %}
+                <div class="col-md-6">
+                    <label class="form-label">النشاط</label>
+                    {{ form.activity }}
+                    {% if not request.user.is_admin %}
+                    <div class="form-text text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                        النشاط غير موجود؟ <a href="mailto:">تواصل مع الأدمن لإضافته</a>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+                <div class="col-md-12">
+                    <label class="form-label">العنوان</label>
+                    {{ form.address }}
+                </div>
+                {% if form.assigned_sales %}
+                <div class="col-md-6">
+                    <label class="form-label">المندوب المسئول</label>
+                    {{ form.assigned_sales }}
+                </div>
+                {% endif %}
+                {% if form.assigned_accountant %}
+                <div class="col-md-6">
+                    <label class="form-label">المحاسب المسئول</label>
+                    {{ form.assigned_accountant }}
+                </div>
+                {% endif %}
+                {% if form.assigned_review %}
+                <div class="col-md-6">
+                    <label class="form-label">المراجع المسئول</label>
+                    {{ form.assigned_review }}
+                </div>
+                {% endif %}
+                <div class="col-12">
+                    <label class="form-label">ملاحظات</label>
+                    {{ form.notes }}
+                </div>
+                {% if user.is_admin %}
+                <div class="col-12">
+                    <div class="form-check form-switch mt-1">
+                        {{ form.is_commissionable }}
+                        <label class="form-check-label fw-semibold" for="{{ form.is_commissionable.id_for_label }}">
+                            <i class="bi bi-cash-coin me-1 text-success"></i> خاضع للعمولة
+                        </label>
+                        <div class="form-text">عند التفعيل يظهر هذا العميل في شيت العمولات</div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            <div class="mt-4 d-flex gap-2">
+                <button type="submit" class="btn btn-primary px-4">حفظ</button>
+                {% if client_type == 'potential' %}
+                <a href="{% url 'targeted_list' %}" class="btn btn-outline-secondary">إلغاء</a>
+                {% else %}
+                <a href="{% url 'clients_list' %}" class="btn btn-outline-secondary">إلغاء</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

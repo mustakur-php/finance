@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+{% block title %}{{ client.name }} - سير العمل{% endblock %}
+{% block page_title %}{{ client.name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <a href="{% url 'workflow_list' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-right me-1"></i> رجوع
+    </a>
+    <div class="text-muted small">
+        {% if client.start_date %}بداية المعاملة: <strong>{{ client.start_date }}</strong>{% endif %}
+        {% if client.total_days is not None %} | إجمالي: <strong>{{ client.total_days }} يوم</strong>{% endif %}
+    </div>
+</div>
+
+<!-- معلومات العميل -->
+<div class="card mb-4">
+    <div class="card-body py-3">
+        <div class="row g-2 align-items-center">
+            <div class="col-auto">
+                <span class="fs-5 fw-bold">{{ client.name }}</span>
+                {% if client.company %}<span class="text-muted ms-2">{{ client.company }}</span>{% endif %}
+            </div>
+            {% if client.phone %}
+            <div class="col-auto text-muted small"><i class="bi bi-telephone me-1"></i>{{ client.phone }}</div>
+            {% endif %}
+            {% if client.assigned_reviewer %}
+            <div class="col-auto text-muted small"><i class="bi bi-person-check me-1"></i>المراجع: <strong>{{ client.assigned_reviewer.get_full_name|default:client.assigned_reviewer.username }}</strong></div>
+            {% endif %}
+            {% if client.notes %}
+            <div class="col-12 text-muted small mt-1"><i class="bi bi-chat-left-text me-1"></i>{{ client.notes }}</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- مراحل سير العمل -->
+<div class="row g-3">
+{% for stage in stages %}
+<div class="col-12">
+    <div class="card border-{% if stage.status == 'in_progress' %}primary{% elif stage.status == 'waiting_approval' %}warning{% elif stage.status == 'completed' %}success{% else %}light{% endif %}">
+        <div class="card-header d-flex justify-content-between align-items-center py-2">
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-secondary">{{ forloop.counter }}</span>
+                <strong>{{ stage.get_stage_display }}</strong>
+                <span class="badge bg-{{ stage.get_status_color }}">{{ stage.get_status_display }}</span>
+                {% if stage.status == 'waiting_approval' %}
+                <span class="badge bg-warning text-dark"><i class="bi bi-clock me-1"></i>بانتظار اعتماد الأدمن</span>
+                {% endif %}
+            </div>
+            <div class="d-flex gap-3 small text-muted">
+                {% if stage.start_date %}<span><i class="bi bi-play-circle me-1"></i>{{ stage.start_date }}</span>{% endif %}
+                {% if stage.end_date %}<span><i class="bi bi-stop-circle me-1"></i>{{ stage.end_date }}</span>{% endif %}
+                {% if stage.due_date %}
+                <span class="{% if stage.due_status == 'overdue' %}text-danger fw-bold{% elif stage.due_status == 'near' %}text-warning fw-bold{% endif %}">
+                    <i class="bi bi-calendar-event me-1"></i>استحقاق: {{ stage.due_date }}
+                    {% if stage.days_remaining is not None %}
+                        {% if stage.days_remaining < 0 %}
+                        (تأخير {{ stage.days_remaining|cut:"-" }} يوم)
+                        {% elif stage.days_remaining == 0 %}
+                        (اليوم!)
+                        {% else %}
+                        ({{ stage.days_remaining }} يوم)
+                        {% endif %}
+                    {% endif %}
+                </span>
+                {% endif %}
+                {% if stage.days_in_stage is not None and stage.status == 'completed' %}
+                <span class="text-success"><i class="bi bi-hourglass-split me-1"></i>{{ stage.days_in_stage }} يوم</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card-body py-3">
+            {% if stage.notes %}
+            <p class="text-muted small mb-3"><i class="bi bi-chat-left-text me-1"></i>{{ stage.notes }}</p>
+            {% endif %}
+
+            {% if stage.updated_by %}
+            <div class="small text-muted mb-2">آخر تحديث: {{ stage.updated_by.get_full_name|default:stage.updated_by.username }}</div>
+            {% endif %}
+            {% if stage.approved_by %}
+            <div class="small text-success mb-2"><i class="bi bi-check-circle me-1"></i>اعتمدها: {{ stage.approved_by.get_full_name|default:stage.approved_by.username }}</div>
+            {% endif %}
+
+            {% if stage.status != 'pending' and stage.status != 'completed' %}
+            <form method="post" action="{% url 'stage_update' stage.pk %}" class="mt-2">
+                {% csrf_token %}
+                <div class="mb-2">
+                    <textarea name="notes" class="form-control form-control-sm" rows="2"
+                              placeholder="أضف ملاحظة...">{{ stage.notes }}</textarea>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <button name="action" value="save" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-save me-1"></i>حفظ الملاحظة
+                    </button>
+                    {% if stage.status == 'waiting_approval' and user.is_admin %}
+                    <button name="action" value="approve" class="btn btn-success btn-sm">
+                        <i class="bi bi-check-circle me-1"></i>اعتماد وإكمال المرحلة
+                    </button>
+                    <button name="action" value="reject" class="btn btn-outline-danger btn-sm">
+                        <i class="bi bi-x-circle me-1"></i>رفض
+                    </button>
+                    {% elif stage.status == 'in_progress' %}
+                    <button name="action" value="complete" class="btn btn-primary btn-sm">
+                        {% if user.is_admin %}
+                        <i class="bi bi-check-circle me-1"></i>إكمال المرحلة
+                        {% else %}
+                        <i class="bi bi-send me-1"></i>إرسال للاعتماد
+                        {% endif %}
+                    </button>
+                    {% endif %}
+                </div>
+            </form>
+            {% endif %}
+
+            <!-- الأدمن يقدر يعدّل due date -->
+            {% if user.is_admin and stage.status != 'completed' %}
+            <form method="post" action="{% url 'stage_set_due' stage.pk %}" class="mt-3 d-flex gap-2 align-items-center">
+                {% csrf_token %}
+                <label class="form-label mb-0 small text-muted">تاريخ الاستحقاق:</label>
+                <input type="date" name="due_date" class="form-control form-control-sm" style="width:auto;"
+                       value="{{ stage.due_date|default:'' }}">
+                <button class="btn btn-outline-secondary btn-sm">تحديث</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endfor %}
+</div>
+{% endblock %}

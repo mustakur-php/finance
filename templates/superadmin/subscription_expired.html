@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>انتهى الاشتراك</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+body { background: #f5f7fa; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+.exp-card { background: #fff; border-radius: 16px; padding: 3rem 2rem; max-width: 480px; width: 100%;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.08); text-align: center; }
+.icon-wrap { width: 80px; height: 80px; border-radius: 50%; display: inline-flex; align-items: center;
+             justify-content: center; font-size: 2.2rem; margin-bottom: 1.5rem; }
+.icon-expired { background: #fdecea; color: #c62828; }
+.icon-disabled { background: #f3e5f5; color: #6a1b9a; }
+</style>
+</head>
+<body>
+<div class="exp-card">
+    {% if reason == 'expired' %}
+    <div class="icon-wrap icon-expired"><i class="bi bi-calendar-x"></i></div>
+    <h4 class="fw-bold mb-2">انتهى الاشتراك</h4>
+    <p class="text-muted mb-1">
+        انتهت مدة اشتراك شركتك في النظام.
+    </p>
+    {% if tenant and tenant.subscription_end %}
+    <p class="text-muted small mb-3">تاريخ الانتهاء: <strong>{{ tenant.subscription_end|date:"Y-m-d" }}</strong></p>
+    {% endif %}
+    <p class="text-muted mb-4">يرجى التواصل مع الإدارة لتجديد الاشتراك والاستمرار في استخدام النظام.</p>
+    {% else %}
+    <div class="icon-wrap icon-disabled"><i class="bi bi-slash-circle"></i></div>
+    <h4 class="fw-bold mb-2">الحساب معطّل</h4>
+    <p class="text-muted mb-4">تم تعطيل حساب شركتك. يرجى التواصل مع الإدارة لمعرفة السبب وإعادة التفعيل.</p>
+    {% endif %}
+
+    <div class="d-flex gap-2 justify-content-center">
+        <a href="{% url 'logout' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-box-arrow-left me-1"></i> تسجيل الخروج
+        </a>
+    </div>
+</div>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+</body>
+</html>

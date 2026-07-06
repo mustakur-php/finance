@@ -1,0 +1,18 @@
+{% extends 'reports/pdf/base.html' %}
+{% block title %}تقرير العمولات{% endblock %}
+{% block content %}
+<table>
+    <thead><tr><th>الشيت</th><th>إجمالي المبالغ</th><th>عمولات المناديب</th><th>عمولات المحاسبين</th><th>عمولات المراجعين</th></tr></thead>
+    <tbody>
+    {% for sheet in sheets %}
+    <tr>
+        <td>{{ sheet }}</td>
+        <td>{{ sheet.t_amount|floatformat:0|default:0 }}</td>
+        <td>{{ sheet.t_sales|floatformat:0|default:0 }}</td>
+        <td>{{ sheet.t_accountant|floatformat:0|default:0 }}</td>
+        <td>{{ sheet.t_review|floatformat:0|default:0 }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

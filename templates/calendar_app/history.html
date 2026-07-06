@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% block title %}سجل الأحداث{% endblock %}
+{% block page_title %}سجل الأحداث{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span>
+            <i class="bi bi-clock-history me-1"></i> سجل الأحداث
+            <span class="badge bg-secondary ms-1">{{ events|length }}</span>
+        </span>
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            <!-- فلاتر مدمجة في الهيدر -->
+            <form method="get" class="d-flex gap-2 align-items-center flex-wrap">
+                <select name="status" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                    <option value="">كل الحالات</option>
+                    {% for code, label in status_choices %}
+                    <option value="{{ code }}" {% if filters.status == code %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <select name="source" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                    <option value="">كل الأقسام</option>
+                    <option value="sales" {% if filters.source == 'sales' %}selected{% endif %}>المناديب</option>
+                    <option value="accounts" {% if filters.source == 'accounts' %}selected{% endif %}>الحسابات</option>
+                    <option value="review" {% if filters.source == 'review' %}selected{% endif %}>المراجعة</option>
+                </select>
+                <input type="date" name="date_from" value="{{ filters.date_from }}" class="form-control form-control-sm" style="width:auto;" onchange="this.form.submit()">
+                <input type="date" name="date_to" value="{{ filters.date_to }}" class="form-control form-control-sm" style="width:auto;" onchange="this.form.submit()">
+                {% if filters.status or filters.source or filters.date_from or filters.date_to %}
+                <a href="{% url 'events_history' %}" class="btn btn-outline-secondary btn-sm">إلغاء الفلتر</a>
+                {% endif %}
+            </form>
+            <a href="{% url 'calendar_view' %}" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-calendar3 me-1"></i> التقويم
+            </a>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle" style="font-size:0.875rem">
+            <thead class="table-light">
+                <tr>
+                    <th>العنوان</th>
+                    <th>الحالة</th>
+                    <th>النوع</th>
+                    <th>العميل</th>
+                    <th>التاريخ</th>
+                    <th>المسند إلى</th>
+                    <th>القسم</th>
+                    <th>ملاحظات</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for event in events %}
+                <tr>
+                    <td class="fw-semibold">{{ event.title }}</td>
+                    <td>
+                        <span class="badge bg-{{ event.get_status_color }}">{{ event.get_status_display }}</span>
+                    </td>
+                    <td>
+                        <span class="badge
+                            {% if event.event_type == 'visit' %}bg-success
+                            {% elif event.event_type == 'meeting' %}bg-primary
+                            {% elif event.event_type == 'followup' %}bg-warning text-dark
+                            {% else %}bg-secondary{% endif %}">
+                            {{ event.get_event_type_display }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if event.client %}
+                        <a href="{% url 'client_detail' event.client.pk %}" class="text-decoration-none">
+                            {{ event.client.name }}
+                        </a>
+                        {% else %}<span class="text-muted">—</span>{% endif %}
+                    </td>
+                    <td>{{ event.start_datetime|date:"Y/m/d" }}<br><small class="text-muted">{{ event.start_datetime|date:"H:i" }}</small></td>
+                    <td><small>{{ event.assigned_to.get_full_name|default:event.assigned_to.username }}</small></td>
+                    <td><small class="text-muted">{{ event.get_source_display|default:"—" }}</small></td>
+                    <td><small class="text-muted">{{ event.notes|default:"—"|truncatechars:40 }}</small></td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-5">
+                        <i class="bi bi-inbox fs-2 d-block mb-2 opacity-50"></i>
+                        لا توجد أحداث في السجل — أنجز أو ألغِ حدثاً من <a href="{% url 'calendar_view' %}">التقويم</a>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

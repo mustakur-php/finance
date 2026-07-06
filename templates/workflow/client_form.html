@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% block title %}إضافة عميل - قسم المراجعة{% endblock %}
+{% block page_title %}إضافة عميل - قسم المراجعة{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:800px;">
+    <div class="card-header"><i class="bi bi-person-plus me-1"></i> إضافة عميل جديد</div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            <h6 class="text-muted mb-3 border-bottom pb-2">بيانات العميل</h6>
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <label class="form-label">الاسم *</label>
+                    <input type="text" name="name" class="form-control" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">اسم الشركة</label>
+                    <input type="text" name="company" class="form-control">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">المدينة</label>
+                    <select name="city" class="form-select">
+                        {% for val, label in cities %}
+                        <option value="{{ val }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">الحي</label>
+                    <input type="text" name="district" class="form-control">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">رقم التواصل</label>
+                    <input type="text" name="phone" class="form-control">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">البريد الإلكتروني</label>
+                    <input type="email" name="email" class="form-control">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">المسئول</label>
+                    <input type="text" name="responsible_person" class="form-control">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">الوظيفة</label>
+                    <input type="text" name="job_title" class="form-control">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">النشاط</label>
+                    <input type="text" name="activity" class="form-control">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">تاريخ بداية المعاملة *</label>
+                    <input type="date" name="start_date" class="form-control" required value="{% now 'Y-m-d' %}">
+                </div>
+                <div class="col-12">
+                    <label class="form-label">العنوان</label>
+                    <textarea name="address" class="form-control" rows="2"></textarea>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">المراجع المسؤول</label>
+                    <select name="assigned_reviewer" class="form-select">
+                        <option value="">— غير محدد —</option>
+                        {% for r in reviewers %}
+                        <option value="{{ r.pk }}">{{ r.get_full_name|default:r.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">ملاحظات</label>
+                    <textarea name="notes" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+
+            <h6 class="text-muted mb-3 border-bottom pb-2">تواريخ الاستحقاق لكل مرحلة <span class="text-muted small fw-normal">(اختياري)</span></h6>
+            <div class="row g-3">
+                {% for code, label in stage_choices %}
+                <div class="col-md-6">
+                    <label class="form-label">
+                        <span class="badge bg-secondary me-1">{{ forloop.counter }}</span>
+                        {{ label }} — due date
+                    </label>
+                    <input type="date" name="due_{{ code }}" class="form-control">
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="mt-4 d-flex gap-2">
+                <button type="submit" class="btn btn-primary px-4">إضافة وإنشاء المراحل</button>
+                <a href="{% url 'workflow_list' %}" class="btn btn-outline-secondary">إلغاء</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

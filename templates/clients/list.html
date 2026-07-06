@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+{% block title %}العملاء{% endblock %}
+{% block page_title %}قائمة العملاء{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-people me-1"></i> العملاء ({{ clients.count }})</span>
+        <a href="{% url 'client_create' %}" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-lg me-1"></i> إضافة عميل
+        </a>
+    </div>
+    <div class="card-body border-bottom pb-3">
+        <form method="get">
+            <div class="row g-2">
+                <div class="col-md-3">
+                    <input type="text" name="q" value="{{ filters.q }}" class="form-control form-control-sm" placeholder="الاسم أو الشركة...">
+                </div>
+                <div class="col-md-2">
+                    <select name="city" class="form-select form-select-sm">
+                        <option value="">كل المدن</option>
+                        {% for c in cities %}
+                        <option value="{{ c }}" {% if filters.city == c %}selected{% endif %}>{{ c }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <input type="text" name="district" value="{{ filters.district }}" class="form-control form-control-sm" placeholder="الحي...">
+                </div>
+                <div class="col-md-2">
+                    <select name="activity" class="form-select form-select-sm">
+                        <option value="">كل الأنشطة</option>
+                        {% for act in activities %}
+                        <option value="{{ act.pk }}" {% if filters.activity == act.pk|stringformat:"s" %}selected{% endif %}>{{ act.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% if request.user.is_admin %}
+                <div class="col-md-2">
+                    <select name="sales" class="form-select form-select-sm">
+                        <option value="">كل المناديب</option>
+                        {% for u in sales_users %}
+                        <option value="{{ u.pk }}" {% if filters.sales == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select name="accountant" class="form-select form-select-sm">
+                        <option value="">كل المحاسبين</option>
+                        {% for u in accountant_users %}
+                        <option value="{{ u.pk }}" {% if filters.accountant == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+                <div class="col-auto d-flex gap-1">
+                    <button class="btn btn-primary btn-sm px-3">بحث</button>
+                    <a href="{% url 'clients_list' %}" class="btn btn-outline-secondary btn-sm">مسح</a>
+                </div>
+            </div>
+        </form>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>الاسم</th>
+                    <th>الشركة</th>
+                    <th>المدينة</th>
+                    <th>الحي</th>
+                    <th>التواصل</th>
+                    <th>المندوب</th>
+                    <th>المحاسب</th>
+                    <th>المراجع</th>
+                    <th>النشاط</th>
+                    {% if request.user.is_admin %}<th>أضافه</th>{% endif %}
+                    {% if request.user.is_admin %}<th class="text-center">عمولة</th>{% endif %}
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for client in clients %}
+                <tr>
+                    <td><a href="{% url 'client_detail' client.pk %}" class="fw-semibold text-decoration-none">{{ client.name }}</a></td>
+                    <td>{{ client.company|default:"-" }}</td>
+                    <td>{{ client.city|default:"-" }}</td>
+                    <td>{{ client.district|default:"-" }}</td>
+                    <td>{{ client.phone|default:"-" }}</td>
+                    <td>
+                        {% if client.assigned_sales %}
+                        <span class="badge bg-success">{{ client.assigned_sales.get_full_name|default:client.assigned_sales.username }}</span>
+                        {% else %}-{% endif %}
+                    </td>
+                    <td>
+                        {% if client.assigned_accountant %}
+                        <span class="badge bg-primary">{{ client.assigned_accountant.get_full_name|default:client.assigned_accountant.username }}</span>
+                        {% else %}-{% endif %}
+                    </td>
+                    <td>
+                        {% if client.assigned_review %}
+                        <span class="badge" style="background:#6a1b9a">{{ client.assigned_review.get_full_name|default:client.assigned_review.username }}</span>
+                        {% else %}-{% endif %}
+                    </td>
+                    <td><small class="text-muted">{{ client.activity|default:"-" }}</small></td>
+                    {% if request.user.is_admin %}
+                    <td><small class="text-muted">{{ client.created_by.get_full_name|default:client.created_by.username|default:"-" }}</small></td>
+                    {% endif %}
+                    {% if request.user.is_admin %}
+                    <td class="text-center">
+                        <div class="form-check form-switch d-flex justify-content-center m-0">
+                            <input class="form-check-input commission-toggle" type="checkbox" role="switch"
+                                   data-url="{% url 'toggle_commissionable' client.pk %}"
+                                   {% if client.is_commissionable %}checked{% endif %}>
+                        </div>
+                    </td>
+                    {% endif %}
+                    <td>
+                        <a href="{% url 'client_detail' client.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+                        <a href="{% url 'client_edit' client.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="9" class="text-center text-muted py-4">لا يوجد عملاء</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

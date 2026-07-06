@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}العمولات{% endblock %}
+{% block page_title %}شيتات العمولات{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-cash-stack me-1"></i> شيتات العمولات ({{ sheets.count }})</span>
+        <a href="{% url 'commission_create' %}" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-lg me-1"></i> شيت جديد
+        </a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>اسم الشيت</th>
+                    <th class="text-center">عدد السطور</th>
+                    <th class="text-end">إجمالي المبالغ</th>
+                    <th class="text-end">إجمالي العمولات</th>
+                    <th>أنشأه</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for sheet in sheets %}
+                <tr>
+                    <td class="fw-semibold">{{ sheet.name }}</td>
+                    <td class="text-center">
+                        <span class="badge bg-secondary">{{ sheet.entries.count }}</span>
+                    </td>
+                    <td class="text-end fw-semibold">{{ sheet.total_amount|floatformat:2 }}</td>
+                    <td class="text-end fw-bold text-success">{{ sheet.total_commission|floatformat:2 }}</td>
+                    <td><small class="text-muted">{{ sheet.created_by.get_full_name|default:sheet.created_by.username|default:"—" }}</small></td>
+                    <td class="d-flex gap-1">
+                        <a href="{% url 'commission_detail' sheet.pk %}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-eye me-1"></i> فتح الشيت
+                        </a>
+                        {% if request.user.is_admin %}
+                        <form method="post" action="{% url 'commission_delete_sheet' sheet.pk %}"
+                              onsubmit="return confirm('حذف الشيت وجميع سطوره؟')">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="حذف الشيت">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-5">
+                        <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+                        لا توجد شيتات عمولات — أنشئ أول شيت
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

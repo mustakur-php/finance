@@ -1,0 +1,24 @@
+{% extends 'reports/pdf/base.html' %}
+{% block title %}تقرير العملاء{% endblock %}
+{% block content %}
+<div class="summary">
+    <div class="kpi"><div class="val">{{ clients|length }}</div><div class="lbl">إجمالي العملاء</div></div>
+</div>
+<table>
+    <thead><tr><th>#</th><th>الاسم</th><th>الشركة</th><th>المدينة</th><th>الجوال</th><th>المندوب</th><th>النشاط</th><th>تاريخ الإضافة</th></tr></thead>
+    <tbody>
+    {% for c in clients %}
+    <tr>
+        <td>{{ forloop.counter }}</td>
+        <td>{{ c.name }}</td>
+        <td>{{ c.company|default:"—" }}</td>
+        <td>{{ c.city|default:"—" }}</td>
+        <td>{{ c.phone|default:"—" }}</td>
+        <td>{{ c.assigned_sales.get_full_name|default:"—" }}</td>
+        <td>{{ c.activity.name|default:"—" }}</td>
+        <td>{{ c.created_at|date:"Y/m/d" }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

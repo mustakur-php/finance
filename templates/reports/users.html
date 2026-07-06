@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block title %}تقرير المستخدمين{% endblock %}
+{% block page_title %}تقرير المستخدمين{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <a href="{% url 'reports_home' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-right me-1"></i> رجوع</a>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form method="get" class="d-flex gap-2 align-items-end flex-wrap">
+            <div><label class="form-label small mb-1">من</label><input type="date" name="date_from" value="{{ filters.date_from }}" class="form-control form-control-sm"></div>
+            <div><label class="form-label small mb-1">إلى</label><input type="date" name="date_to" value="{{ filters.date_to }}" class="form-control form-control-sm"></div>
+            <button class="btn btn-primary btn-sm">بحث</button>
+            {% if filters.date_from or filters.date_to %}<a href="{% url 'report_users' %}" class="btn btn-outline-secondary btn-sm">إلغاء</a>{% endif %}
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size:0.875rem">
+            <thead class="table-dark">
+                <tr><th>الموظف</th><th>الدور</th><th class="text-center">إجمالي الأحداث</th><th class="text-center text-success">منجزة</th><th class="text-center text-danger">ملغاة</th><th class="text-center text-primary">قادمة</th><th class="text-center">نسبة الإنجاز</th></tr>
+            </thead>
+            <tbody>
+            {% for row in data %}
+            <tr>
+                <td>
+                    <div class="fw-semibold">{{ row.user.get_full_name|default:row.user.username }}</div>
+                    <div class="text-muted small">{{ row.user.username }}</div>
+                </td>
+                <td><span class="badge bg-secondary">{{ row.user.get_role_display }}</span></td>
+                <td class="text-center fw-bold">{{ row.total }}</td>
+                <td class="text-center text-success">{{ row.done }}</td>
+                <td class="text-center text-danger">{{ row.cancelled }}</td>
+                <td class="text-center text-primary">{{ row.pending }}</td>
+                <td class="text-center">
+                    {% if row.total %}
+                    {% widthratio row.done row.total 100 as pct %}
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="progress flex-grow-1" style="height:8px;">
+                            <div class="progress-bar bg-success" style="width:{{ pct }}%"></div>
+                        </div>
+                        <span class="small">{{ pct }}%</span>
+                    </div>
+                    {% else %}—{% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-center text-muted py-4">لا يوجد بيانات</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block auth_content %}
+<div class="min-vh-100 d-flex align-items-center justify-content-center" style="background: linear-gradient(135deg, #1F4E79, #2E75B6);">
+    <div class="card p-4" style="width: 380px;">
+        <div class="text-center mb-4">
+            <i class="bi bi-building fs-1 text-primary"></i>
+            <h4 class="mt-2 fw-bold">نظام إدارة العملاء</h4>
+            <p class="text-muted small">سجّل دخولك للمتابعة</p>
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label fw-semibold">اسم المستخدم</label>
+                {{ form.username }}
+            </div>
+            <div class="mb-4">
+                <label class="form-label fw-semibold">كلمة المرور</label>
+                {{ form.password }}
+            </div>
+            <button type="submit" class="btn btn-primary w-100 py-2">
+                <i class="bi bi-box-arrow-in-right me-1"></i> دخول
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

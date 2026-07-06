@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% block title %}التقارير{% endblock %}
+{% block page_title %}التقارير{% endblock %}
+
+{% block content %}
+<div class="row g-3 mb-4">
+    <!-- KPI Cards -->
+    <div class="col-md-3">
+        <div class="card text-center border-0 shadow-sm">
+            <div class="card-body py-4">
+                <div class="fs-2 fw-bold text-primary">{{ total_clients }}</div>
+                <div class="text-muted small mt-1">إجمالي العملاء الفعليين</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-0 shadow-sm">
+            <div class="card-body py-4">
+                <div class="fs-2 fw-bold text-success">{{ total_amount|floatformat:0 }}</div>
+                <div class="text-muted small mt-1">إجمالي المبالغ (ريال)</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-0 shadow-sm">
+            <div class="card-body py-4">
+                <div class="fs-2 fw-bold text-warning">{{ events_done }}</div>
+                <div class="text-muted small mt-1">أحداث منجزة</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-0 shadow-sm {% if workflow_overdue %}border-danger{% endif %}">
+            <div class="card-body py-4">
+                <div class="fs-2 fw-bold {% if workflow_overdue %}text-danger{% else %}text-secondary{% endif %}">{{ workflow_overdue }}</div>
+                <div class="text-muted small mt-1">مراحل متأخرة في المراجعة</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- عمولات -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center py-3">
+                <div class="fw-bold text-danger fs-5">{{ total_commission|floatformat:0 }} ريال</div>
+                <div class="text-muted small">عمولات المناديب</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center py-3">
+                <div class="fw-bold text-primary fs-5">{{ total_accountant|floatformat:0 }} ريال</div>
+                <div class="text-muted small">عمولات المحاسبين</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center py-3">
+                <div class="fw-bold text-purple fs-5" style="color:#6a1b9a;">{{ total_review_comm|floatformat:0 }} ريال</div>
+                <div class="text-muted small">عمولات المراجعين</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- روابط التقارير التفصيلية -->
+<div class="row g-3">
+    {% with reports=reports_links %}
+    <div class="col-md-4">
+        <a href="{% url 'report_clients' %}" class="card text-decoration-none border-0 shadow-sm h-100 hover-card">
+            <div class="card-body d-flex align-items-center gap-3 py-4">
+                <i class="bi bi-people fs-2 text-primary"></i>
+                <div>
+                    <div class="fw-bold">تقرير العملاء</div>
+                    <div class="text-muted small">{{ total_clients }} عميل فعلي، {{ total_targeted }} مستهدف</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="{% url 'report_commissions' %}" class="card text-decoration-none border-0 shadow-sm h-100">
+            <div class="card-body d-flex align-items-center gap-3 py-4">
+                <i class="bi bi-cash-stack fs-2 text-success"></i>
+                <div>
+                    <div class="fw-bold">تقرير العمولات</div>
+                    <div class="text-muted small">إجمالي: {{ total_amount|floatformat:0 }} ريال</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="{% url 'report_events' %}" class="card text-decoration-none border-0 shadow-sm h-100">
+            <div class="card-body d-flex align-items-center gap-3 py-4">
+                <i class="bi bi-calendar-check fs-2 text-warning"></i>
+                <div>
+                    <div class="fw-bold">تقرير الأحداث</div>
+                    <div class="text-muted small">{{ events_done }} منجز، {{ events_pending }} قادم</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="{% url 'report_workflow' %}" class="card text-decoration-none border-0 shadow-sm h-100">
+            <div class="card-body d-flex align-items-center gap-3 py-4">
+                <i class="bi bi-diagram-3 fs-2 text-info"></i>
+                <div>
+                    <div class="fw-bold">تقرير المراجعة</div>
+                    <div class="text-muted small">{{ workflow_clients }} عميل</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="{% url 'report_users' %}" class="card text-decoration-none border-0 shadow-sm h-100">
+            <div class="card-body d-flex align-items-center gap-3 py-4">
+                <i class="bi bi-person-gear fs-2 text-secondary"></i>
+                <div>
+                    <div class="fw-bold">تقرير المستخدمين</div>
+                    <div class="text-muted small">نشاط الموظفين</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    {% endwith %}
+</div>
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% block title %}المستخدمون{% endblock %}
+{% block page_title %}إدارة المستخدمين{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-person-gear me-1"></i> المستخدمون ({{ users.count }})</span>
+        <a href="{% url 'user_create' %}" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-lg me-1"></i> إضافة مستخدم
+        </a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>المستخدم</th>
+                    <th>الدور</th>
+                    <th>الجوال</th>
+                    <th>البريد</th>
+                    <th>الحالة</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for u in users %}
+                <tr>
+                    <td>
+                        <div class="fw-semibold">{{ u.get_full_name|default:u.username }}</div>
+                        <div class="text-muted small">@{{ u.username }}</div>
+                    </td>
+                    <td>
+                        <span class="badge
+                            {% if u.role == 'admin' %}badge-admin
+                            {% elif u.role == 'sales' %}badge-sales
+                            {% else %}badge-accountant{% endif %} text-white">
+                            {{ u.get_role_display }}
+                        </span>
+                    </td>
+                    <td>{{ u.phone|default:"—" }}</td>
+                    <td>{{ u.email|default:"—" }}</td>
+                    <td>
+                        {% if u.is_active %}
+                        <span class="badge bg-success">نشط</span>
+                        {% else %}
+                        <span class="badge bg-danger">معطّل</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'user_edit' u.pk %}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        {% if u.pk != request.user.pk %}
+                        <form method="post" action="{% url 'user_toggle' u.pk %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm {% if u.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+                                {% if u.is_active %}<i class="bi bi-person-slash"></i>{% else %}<i class="bi bi-person-check"></i>{% endif %}
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="6" class="text-center text-muted py-4">لا يوجد مستخدمون</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

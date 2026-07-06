@@ -1,0 +1,247 @@
+{% extends 'base.html' %}
+
+{% block title %}لوحة التحكم{% endblock %}
+{% block page_title %}لوحة التحكم{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3 mb-4">
+
+{% if user.is_admin %}
+    <div class="col-md-4">
+        <div class="card stat-card blue p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small">إجمالي العملاء</div>
+                    <div class="fs-2 fw-bold text-primary">{{ total_clients }}</div>
+                </div>
+                <i class="bi bi-people fs-1 text-primary opacity-25"></i>
+            </div>
+            <a href="{% url 'clients_list' %}" class="stretched-link"></a>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card green p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small">المستخدمون</div>
+                    <div class="fs-2 fw-bold" style="color:#375623;">{{ total_users }}</div>
+                </div>
+                <i class="bi bi-person-gear fs-1 opacity-25" style="color:#375623;"></i>
+            </div>
+            <a href="{% url 'users_list' %}" class="stretched-link"></a>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card orange p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small">إجمالي الزيارات</div>
+                    <div class="fs-2 fw-bold" style="color:#C55A11;">{{ total_visits }}</div>
+                </div>
+                <i class="bi bi-geo-alt fs-1 opacity-25" style="color:#C55A11;"></i>
+            </div>
+            <a href="{% url 'visits_list' %}" class="stretched-link"></a>
+        </div>
+    </div>
+
+{% elif user.is_sales %}
+    <div class="col-md-6">
+        <div class="card stat-card blue p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small">عملائي</div>
+                    <div class="fs-2 fw-bold text-primary">{{ my_clients }}</div>
+                </div>
+                <i class="bi bi-people fs-1 text-primary opacity-25"></i>
+            </div>
+            <a href="{% url 'clients_list' %}" class="stretched-link"></a>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card stat-card green p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small">زياراتي</div>
+                    <div class="fs-2 fw-bold" style="color:#375623;">{{ my_visits }}</div>
+                </div>
+                <i class="bi bi-geo-alt fs-1 opacity-25" style="color:#375623;"></i>
+            </div>
+            <a href="{% url 'visits_list' %}" class="stretched-link"></a>
+        </div>
+    </div>
+
+{% elif user.is_accountant %}
+    <div class="col-md-6">
+        <div class="card stat-card blue p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small">عملائي</div>
+                    <div class="fs-2 fw-bold text-primary">{{ my_clients }}</div>
+                </div>
+                <i class="bi bi-people fs-1 text-primary opacity-25"></i>
+            </div>
+            <a href="{% url 'clients_list' %}" class="stretched-link"></a>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card stat-card orange p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small">العمولات</div>
+                    <div class="fs-2 fw-bold" style="color:#C55A11;">شيتات</div>
+                </div>
+                <i class="bi bi-cash-stack fs-1 opacity-25" style="color:#C55A11;"></i>
+            </div>
+            <a href="{% url 'commissions_list' %}" class="stretched-link"></a>
+        </div>
+    </div>
+
+{% elif user.is_review %}
+    <div class="col-md-6">
+        <div class="card stat-card blue p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small">العملاء</div>
+                    <div class="fs-2 fw-bold text-primary">{{ my_clients }}</div>
+                </div>
+                <i class="bi bi-people fs-1 text-primary opacity-25"></i>
+            </div>
+            <a href="{% url 'clients_list' %}" class="stretched-link"></a>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card stat-card p-3" style="border-color:#6a1b9a">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small">أحداث اليوم</div>
+                    <div class="fs-2 fw-bold" style="color:#6a1b9a">{{ today_events.count }}</div>
+                </div>
+                <i class="bi bi-calendar-check fs-1 opacity-25" style="color:#6a1b9a"></i>
+            </div>
+            <a href="{% url 'calendar_view' %}" class="stretched-link"></a>
+        </div>
+    </div>
+{% endif %}
+
+</div>
+
+<!-- أحداث اليوم -->
+<div class="row g-3">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-calendar-event me-1"></i> أحداث اليوم</span>
+                <a href="{% url 'calendar_view' %}" class="btn btn-sm btn-outline-primary">التقويم الكامل</a>
+            </div>
+            <div class="card-body p-0">
+                {% if today_events %}
+                <div class="list-group list-group-flush">
+                    {% for event in today_events %}
+                    <div class="list-group-item py-2 px-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge
+                                {% if event.event_type == 'visit' %}bg-success
+                                {% elif event.event_type == 'meeting' %}bg-primary
+                                {% elif event.event_type == 'followup' %}bg-warning text-dark
+                                {% else %}bg-secondary{% endif %}" style="font-size:0.7rem">
+                                {{ event.get_event_type_display }}
+                            </span>
+                            <span class="fw-semibold small flex-grow-1">{{ event.title }}</span>
+                            <span class="text-muted" style="font-size:0.75rem">{{ event.start_datetime|date:"H:i" }}</span>
+                        </div>
+                        {% if event.client %}
+                        <div class="text-muted mt-1" style="font-size:0.72rem">
+                            <i class="bi bi-person me-1"></i>{{ event.client.name }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="p-4 text-muted text-center small">
+                    <i class="bi bi-calendar-check fs-3 d-block mb-2 opacity-50"></i>
+                    لا توجد أحداث اليوم
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-lightning me-1"></i> إجراءات سريعة</div>
+            <div class="card-body d-grid gap-2">
+                <a href="{% url 'client_create' %}" class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-person-plus me-1"></i> إضافة عميل
+                </a>
+                {% if user.is_admin or user.is_sales %}
+                <a href="{% url 'visit_create' %}" class="btn btn-outline-success btn-sm">
+                    <i class="bi bi-geo-alt me-1"></i> تسجيل زيارة
+                </a>
+                {% endif %}
+                <a href="{% url 'event_create' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-calendar-plus me-1"></i> إضافة حدث
+                </a>
+            </div>
+        </div>
+        {% if chart_items %}
+        <div class="card mt-3">
+            <div class="card-header" style="font-size:0.85rem"><i class="bi bi-bar-chart-line me-1"></i> ملخص العمولات</div>
+            <div class="card-body p-2">
+                <canvas id="commissionsChart" style="width:220px;height:220px;margin:auto;display:block"></canvas>
+                <div class="d-flex flex-column gap-1 mt-2">
+                    {% for item in chart_items %}
+                    <div class="d-flex align-items-center gap-2 px-2 py-1 rounded-2" style="background:{{ item.bg }}">
+                        <div style="width:8px;height:8px;border-radius:2px;background:{{ item.color }};flex-shrink:0"></div>
+                        <div class="text-muted" style="font-size:0.7rem">{{ item.label }}</div>
+                        <div class="fw-semibold ms-auto" style="font-size:0.75rem;color:{{ item.color }}">{{ item.value|floatformat:2 }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if chart_items %}
+<script>
+(function() {
+    var ctx = document.getElementById('commissionsChart');
+    if (!ctx) return;
+    var chartData = {{ chart_json|safe }};
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: chartData.labels,
+            datasets: [{
+                data: chartData.values,
+                backgroundColor: chartData.colors,
+                borderRadius: 4,
+                borderWidth: 2,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            return ' ' + ctx.parsed.toLocaleString('ar-SA', {minimumFractionDigits: 2});
+                        }
+                    }
+                }
+            },
+            cutout: '75%'
+        }
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

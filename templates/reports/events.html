@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% block title %}تقرير الأحداث{% endblock %}
+{% block page_title %}تقرير الأحداث{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <a href="{% url 'reports_home' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-right me-1"></i> رجوع</a>
+    <div class="d-flex gap-2">
+        <a href="{% url 'export_events_excel' %}?{{ request.GET.urlencode }}" class="btn btn-success btn-sm"><i class="bi bi-file-earmark-excel me-1"></i> Excel</a>
+        <a href="{% url 'export_events_pdf' %}?{{ request.GET.urlencode }}" class="btn btn-danger btn-sm"><i class="bi bi-file-earmark-pdf me-1"></i> PDF</a>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form method="get" class="d-flex gap-2 align-items-end flex-wrap">
+            <div><label class="form-label small mb-1">من</label><input type="date" name="date_from" value="{{ filters.date_from }}" class="form-control form-control-sm"></div>
+            <div><label class="form-label small mb-1">إلى</label><input type="date" name="date_to" value="{{ filters.date_to }}" class="form-control form-control-sm"></div>
+            <div>
+                <label class="form-label small mb-1">الموظف</label>
+                <select name="user" class="form-select form-select-sm">
+                    <option value="">الكل</option>
+                    {% for u in users %}<option value="{{ u.pk }}" {% if filters.user == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="form-label small mb-1">القسم</label>
+                <select name="source" class="form-select form-select-sm">
+                    <option value="">الكل</option>
+                    <option value="sales" {% if filters.source == 'sales' %}selected{% endif %}>المناديب</option>
+                    <option value="accounts" {% if filters.source == 'accounts' %}selected{% endif %}>الحسابات</option>
+                    <option value="review" {% if filters.source == 'review' %}selected{% endif %}>المراجعة</option>
+                </select>
+            </div>
+            <button class="btn btn-primary btn-sm">بحث</button>
+            {% if filters.date_from or filters.date_to or filters.user or filters.source %}
+            <a href="{% url 'report_events' %}" class="btn btn-outline-secondary btn-sm">إلغاء</a>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<!-- ملخص -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3"><div class="card border-0 shadow-sm text-center"><div class="card-body py-3"><div class="fs-4 fw-bold">{{ total }}</div><div class="small text-muted">إجمالي الأحداث</div></div></div></div>
+    {% for s in by_status %}
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center">
+            <div class="card-body py-3">
+                <div class="fs-4 fw-bold
+                    {% if s.status == 'done' %}text-success
+                    {% elif s.status == 'cancelled' %}text-danger
+                    {% elif s.status == 'rescheduled' %}text-warning
+                    {% else %}text-primary{% endif %}">{{ s.count }}</div>
+                <div class="small text-muted">
+                    {% if s.status == 'done' %}منجزة
+                    {% elif s.status == 'cancelled' %}ملغاة
+                    {% elif s.status == 'rescheduled' %}معاد جدولتها
+                    {% else %}قادمة{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- نشاط الموظفين -->
+<div class="card mb-4">
+    <div class="card-header fw-bold">نشاط الموظفين</div>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0" style="font-size:0.85rem">
+            <thead class="table-dark">
+                <tr><th>الموظف</th><th>إجمالي الأحداث</th><th class="text-success">منجزة</th><th class="text-danger">ملغاة</th><th>نسبة الإنجاز</th></tr>
+            </thead>
+            <tbody>
+            {% for r in by_user %}
+            <tr>
+                <td>{{ r.assigned_to__first_name }} {{ r.assigned_to__last_name }}</td>
+                <td>{{ r.total }}</td>
+                <td class="text-success">{{ r.done }}</td>
+                <td class="text-danger">—</td>
+                <td>
+                    {% if r.total %}
+                    {% widthratio r.done r.total 100 %}%
+                    {% else %}—{% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center text-muted py-3">لا يوجد بيانات</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- جدول الأحداث -->
+<div class="card">
+    <div class="card-header fw-bold">تفاصيل الأحداث <span class="badge bg-secondary">{{ events|length }}</span></div>
+    <div class="table-responsive">
+        <table class="table table-hover table-sm align-middle mb-0" style="font-size:0.85rem">
+            <thead class="table-light">
+                <tr><th>العنوان</th><th>النوع</th><th>الحالة</th><th>العميل</th><th>المسند إلى</th><th>التاريخ</th><th>ملاحظات</th></tr>
+            </thead>
+            <tbody>
+            {% for e in events %}
+            <tr>
+                <td class="fw-semibold">{{ e.title }}</td>
+                <td><span class="badge {% if e.event_type == 'visit' %}bg-success{% elif e.event_type == 'meeting' %}bg-primary{% elif e.event_type == 'followup' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ e.get_event_type_display }}</span></td>
+                <td><span class="badge {% if e.status == 'done' %}bg-success{% elif e.status == 'cancelled' %}bg-danger{% elif e.status == 'rescheduled' %}bg-warning text-dark{% else %}bg-primary{% endif %}">{{ e.get_status_display }}</span></td>
+                <td>{{ e.client.name|default:"—" }}</td>
+                <td>{{ e.assigned_to.get_full_name|default:"—" }}</td>
+                <td>{{ e.start_datetime|date:"Y/m/d" }}</td>
+                <td class="text-muted">{{ e.notes|truncatechars:30|default:"—" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-center text-muted py-4">لا يوجد بيانات</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

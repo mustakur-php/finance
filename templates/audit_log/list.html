@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+{% block title %}سجل العمليات{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0"><i class="bi bi-journal-text me-2"></i>سجل العمليات</h4>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <input type="text" name="q" value="{{ filters.q }}" class="form-control form-control-sm" placeholder="بحث باسم المستخدم أو الكائن...">
+            </div>
+            <div class="col-md-2">
+                <select name="action" class="form-select form-select-sm">
+                    <option value="">كل العمليات</option>
+                    {% for code, label in actions %}
+                    <option value="{{ code }}" {% if filters.action == code %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="model" class="form-select form-select-sm">
+                    <option value="">كل النماذج</option>
+                    {% for m in models %}
+                    <option value="{{ m }}" {% if filters.model == m %}selected{% endif %}>{{ m }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="user_id" class="form-select form-select-sm">
+                    <option value="">كل المستخدمين</option>
+                    {% for u in users %}
+                    <option value="{{ u.pk }}" {% if filters.user_id == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-1">
+                <input type="date" name="date_from" value="{{ filters.date_from }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-1">
+                <input type="date" name="date_to" value="{{ filters.date_to }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-1">
+                <button type="submit" class="btn btn-primary btn-sm w-100">بحث</button>
+            </div>
+            {% if filters.q or filters.action or filters.model or filters.date_from or filters.date_to or filters.user_id %}
+            <div class="col-md-auto">
+                <a href="{% url 'audit_log_list' %}" class="btn btn-outline-secondary btn-sm">إلغاء</a>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>الوقت</th>
+                        <th>المستخدم</th>
+                        <th>العملية</th>
+                        <th>النموذج</th>
+                        <th>الكائن</th>
+                        <th>التفاصيل</th>
+                        <th>IP</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td class="text-nowrap small text-muted">{{ log.timestamp|date:"Y/m/d H:i:s" }}</td>
+                        <td class="small">{{ log.user.get_full_name|default:log.user.username|default:"—" }}</td>
+                        <td>
+                            <span class="badge bg-{{ log.get_action_color }}">{{ log.get_action_display }}</span>
+                        </td>
+                        <td class="small text-muted">{{ log.model_name }}</td>
+                        <td class="small">{{ log.object_repr }}</td>
+                        <td class="small">
+                            {% if log.changes %}
+                            <button class="btn btn-link btn-sm p-0 text-decoration-none" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#changes-{{ log.pk }}">
+                                <i class="bi bi-chevron-down"></i> عرض التغييرات
+                            </button>
+                            <div class="collapse mt-1" id="changes-{{ log.pk }}">
+                                <table class="table table-bordered table-sm mb-0">
+                                    <thead><tr><th>الحقل</th><th>من</th><th>إلى</th></tr></thead>
+                                    <tbody>
+                                        {% for field, diff in log.changes.items %}
+                                        <tr>
+                                            <td><strong>{{ field }}</strong></td>
+                                            <td class="text-danger">{{ diff.من|default:"—" }}</td>
+                                            <td class="text-success">{{ diff.إلى|default:"—" }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                        <td class="small text-muted">{{ log.ip_address|default:"—" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-muted">لا توجد سجلات</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer d-flex justify-content-between align-items-center">
+        <span class="text-muted small">
+            إجمالي العمليات: <strong>{{ total_count }}</strong>
+            — صفحة {{ page_obj.number }} من {{ page_obj.paginator.num_pages }}
+        </span>
+        {% if page_obj.paginator.num_pages > 1 %}
+        <nav>
+            <ul class="pagination pagination-sm mb-0">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?{% for k,v in filters.items %}{% if v %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}">السابق</a>
+                </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% elif num > page_obj.number|add:"-3" and num < page_obj.number|add:"3" %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{% for k,v in filters.items %}{% if v %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ num }}">{{ num }}</a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?{% for k,v in filters.items %}{% if v %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}">التالي</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block title %}إعداد الواتساب{% endblock %}
+{% block page_title %}إعداد تنبيهات الواتساب{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-whatsapp me-1" style="color:#25D366"></i> إعداد CallMeBot</div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">رقم الواتساب *</label>
+                        <input type="text" name="whatsapp_number" class="form-control"
+                               value="{{ user.whatsapp_number }}" placeholder="966501234567">
+                        <div class="form-text">بدون + أو 00 — مثال: 966501234567</div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label">CallMeBot API Key *</label>
+                        <input type="text" name="callmebot_api_key" class="form-control"
+                               value="{{ user.callmebot_api_key }}" placeholder="1234567">
+                        <div class="form-text">ستحصل عليه بعد تفعيل الخدمة أدناه</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-save me-1"></i> حفظ الإعدادات
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card border-success">
+            <div class="card-header bg-success text-white">
+                <i class="bi bi-info-circle me-1"></i> كيف تفعّل الخدمة؟
+            </div>
+            <div class="card-body">
+                <ol class="mb-0">
+                    <li class="mb-3">
+                        افتح الواتساب وأرسل هذه الرسالة على الرقم التالي:
+                        <div class="mt-2 p-2 bg-light rounded border d-flex justify-content-between align-items-center">
+                            <code>+34 644 59 71 30</code>
+                        </div>
+                    </li>
+                    <li class="mb-3">
+                        أرسل هذا النص بالضبط:
+                        <div class="mt-2 p-2 bg-light rounded border">
+                            <code>I allow callmebot to send me messages</code>
+                        </div>
+                    </li>
+                    <li class="mb-3">
+                        سيردّ عليك برسالة فيها <strong>API Key</strong> — انسخه والصقه في الحقل على اليسار
+                    </li>
+                    <li>
+                        احفظ الإعدادات وستصلك تذكيرات الواتساب تلقائياً قبل 24 ساعة من كل موعد
+                    </li>
+                </ol>
+            </div>
+        </div>
+
+        {% if user.whatsapp_number and user.callmebot_api_key %}
+        <div class="card mt-3 border-success">
+            <div class="card-body d-flex align-items-center gap-3">
+                <i class="bi bi-check-circle-fill text-success fs-2"></i>
+                <div>
+                    <div class="fw-semibold">الواتساب مفعّل</div>
+                    <div class="text-muted small">{{ user.whatsapp_number }}</div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="card mt-3 border-warning">
+            <div class="card-body d-flex align-items-center gap-3">
+                <i class="bi bi-exclamation-circle-fill text-warning fs-2"></i>
+                <div>
+                    <div class="fw-semibold">الواتساب غير مفعّل</div>
+                    <div class="text-muted small">فعّل الخدمة لاستقبال التذكيرات</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

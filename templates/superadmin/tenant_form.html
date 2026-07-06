@@ -1,0 +1,140 @@
+{% extends "superadmin/base.html" %}
+{% block title %}{% if tenant %}تعديل {{ tenant.name }}{% else %}إضافة شركة جديدة{% endif %}{% endblock %}
+{% block page_title %}{% if tenant %}تعديل بيانات الشركة{% else %}إضافة شركة جديدة{% endif %}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+<div class="col-lg-9">
+
+<form method="post">
+{% csrf_token %}
+
+<div class="card mb-3">
+    <div class="card-header"><i class="bi bi-building me-1"></i> معلومات الشركة</div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">اسم الشركة <span class="text-danger">*</span></label>
+                <input type="text" name="name" class="form-control" value="{{ tenant.name|default:'' }}" required>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Slug (معرّف URL) <span class="text-danger">*</span></label>
+                <input type="text" name="slug" class="form-control" value="{{ tenant.slug|default:'' }}"
+                       placeholder="company-name" {% if tenant %}readonly{% endif %} required>
+                {% if tenant %}<div class="form-text">لا يمكن تغيير الـ slug بعد الإنشاء</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">المسؤول / جهة الاتصال</label>
+                <input type="text" name="contact_person" class="form-control" value="{{ tenant.contact_person|default:'' }}">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">رقم الجوال</label>
+                <input type="text" name="phone" class="form-control" value="{{ tenant.phone|default:'' }}">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">البريد الإلكتروني</label>
+                <input type="email" name="email" class="form-control" value="{{ tenant.email|default:'' }}">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">العنوان</label>
+                <input type="text" name="address" class="form-control" value="{{ tenant.address|default:'' }}">
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if not tenant %}
+<div class="card mb-3">
+    <div class="card-header"><i class="bi bi-person-badge me-1"></i> حساب المدير الرئيسي للشركة</div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">اسم المستخدم <span class="text-danger">*</span></label>
+                <input type="text" name="admin_username" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">كلمة المرور <span class="text-danger">*</span></label>
+                <input type="password" name="admin_password" class="form-control" required minlength="8">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">الاسم الكامل</label>
+                <input type="text" name="admin_fullname" class="form-control">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">البريد الإلكتروني للمدير</label>
+                <input type="email" name="admin_email" class="form-control">
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="card mb-3">
+    <div class="card-header"><i class="bi bi-credit-card me-1"></i> الاشتراك</div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">نوع الباقة</label>
+                <select name="subscription_plan" class="form-select">
+                    <option value="monthly" {% if tenant.subscription_plan == 'monthly' %}selected{% endif %}>شهري</option>
+                    <option value="yearly" {% if tenant.subscription_plan == 'yearly' %}selected{% endif %}>سنوي</option>
+                    <option value="custom" {% if tenant.subscription_plan == 'custom' %}selected{% endif %}>مخصص</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">تاريخ البداية</label>
+                <input type="date" name="subscription_start" class="form-control"
+                       value="{{ tenant.subscription_start|date:'Y-m-d'|default:today }}">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">تاريخ الانتهاء</label>
+                <input type="date" name="subscription_end" class="form-control" id="subEnd"
+                       value="{{ tenant.subscription_end|date:'Y-m-d'|default:'' }}">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">الحد الأقصى للمستخدمين</label>
+                <input type="number" name="max_users" class="form-control" min="1"
+                       value="{{ tenant.max_users|default:10 }}">
+            </div>
+            <div class="col-md-4 d-flex align-items-end pb-1">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" name="is_active" id="isActive"
+                           {% if tenant.is_active or not tenant %}checked{% endif %}>
+                    <label class="form-check-label" for="isActive">الحساب نشط</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-3 d-flex gap-2 flex-wrap" id="quick-btns">
+            <span class="text-muted small align-self-center">تحديد مدة سريع:</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addDays(30)">شهر</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addDays(90)">3 أشهر</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addDays(180)">6 أشهر</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addDays(365)">سنة</button>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex gap-2">
+    <button type="submit" class="btn btn-primary px-4">
+        <i class="bi bi-check-lg me-1"></i> {% if tenant %}حفظ التعديلات{% else %}إنشاء الشركة{% endif %}
+    </button>
+    <a href="{% if tenant %}{% url 'tenant_detail' tenant.pk %}{% else %}{% url 'superadmin_dashboard' %}{% endif %}"
+       class="btn btn-outline-secondary">إلغاء</a>
+</div>
+</form>
+
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function addDays(n) {
+    const start = document.querySelector('[name=subscription_start]').value;
+    const base = start ? new Date(start) : new Date();
+    base.setDate(base.getDate() + n);
+    document.getElementById('subEnd').value = base.toISOString().slice(0,10);
+}
+</script>
+{% endblock %}

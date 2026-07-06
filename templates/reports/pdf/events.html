@@ -1,0 +1,24 @@
+{% extends 'reports/pdf/base.html' %}
+{% block title %}تقرير الأحداث{% endblock %}
+{% block content %}
+<div class="summary">
+    <div class="kpi"><div class="val">{{ events|length }}</div><div class="lbl">إجمالي الأحداث</div></div>
+</div>
+<table>
+    <thead><tr><th>#</th><th>العنوان</th><th>النوع</th><th>الحالة</th><th>العميل</th><th>المسند إلى</th><th>التاريخ</th><th>ملاحظات</th></tr></thead>
+    <tbody>
+    {% for e in events %}
+    <tr>
+        <td>{{ forloop.counter }}</td>
+        <td>{{ e.title }}</td>
+        <td>{{ e.get_event_type_display }}</td>
+        <td>{{ e.get_status_display }}</td>
+        <td>{{ e.client.name|default:"—" }}</td>
+        <td>{{ e.assigned_to.get_full_name|default:"—" }}</td>
+        <td>{{ e.start_datetime|date:"Y/m/d" }}</td>
+        <td>{{ e.notes|truncatechars:40|default:"—" }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

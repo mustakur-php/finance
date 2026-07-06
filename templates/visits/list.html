@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block title %}سجل الزيارات{% endblock %}
+{% block page_title %}سجل الزيارات{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>
+            <i class="bi bi-check-circle-fill text-success me-1"></i> الأحداث المنجزة
+            <span class="badge bg-success ms-1">{{ done_events.count }}</span>
+        </span>
+        <a href="{% url 'calendar_view' %}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-calendar3 me-1"></i> التقويم
+        </a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle" style="font-size:0.875rem">
+            <thead class="table-light">
+                <tr>
+                    <th>العنوان</th>
+                    <th>النوع</th>
+                    <th>العميل</th>
+                    <th>التاريخ</th>
+                    <th>المسند إلى</th>
+                    <th>القسم</th>
+                    <th>ملاحظات</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for event in done_events %}
+                <tr>
+                    <td class="fw-semibold">{{ event.title }}</td>
+                    <td>
+                        <span class="badge
+                            {% if event.event_type == 'visit' %}bg-success
+                            {% elif event.event_type == 'meeting' %}bg-primary
+                            {% elif event.event_type == 'followup' %}bg-warning text-dark
+                            {% else %}bg-secondary{% endif %}">
+                            {{ event.get_event_type_display }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if event.client %}
+                        <a href="{% url 'client_detail' event.client.pk %}" class="text-decoration-none">
+                            {{ event.client.name }}
+                        </a>
+                        {% else %}<span class="text-muted">—</span>{% endif %}
+                    </td>
+                    <td>{{ event.start_datetime|date:"Y/m/d" }}<br><small class="text-muted">{{ event.start_datetime|date:"H:i" }}</small></td>
+                    <td><small>{{ event.assigned_to.get_full_name|default:event.assigned_to.username }}</small></td>
+                    <td><small class="text-muted">{{ event.get_source_display|default:"—" }}</small></td>
+                    <td><small class="text-muted">{{ event.notes|default:"—"|truncatechars:40 }}</small></td>
+                    <td>
+                        <form method="post" action="{% url 'event_toggle_done' event.pk %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-warning" title="إرجاع للتقويم">
+                                <i class="bi bi-arrow-counterclockwise"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-5">
+                        <i class="bi bi-inbox fs-2 d-block mb-2 opacity-50"></i>
+                        لا توجد أحداث منجزة — أنجز حدثاً من <a href="{% url 'calendar_view' %}">التقويم</a>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
