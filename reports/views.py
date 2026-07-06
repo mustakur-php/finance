@@ -331,22 +331,36 @@ def export_clients_excel(request):
 @admin_required
 def export_commissions_excel(request):
     import openpyxl
-    from commissions.models import CommissionSheet
+    from commissions.models import CommissionEntry
 
-    tenant = request.user.tenant
-    sheets = CommissionSheet.objects.filter(tenant=tenant).prefetch_related('entries')
+    tenant      = request.user.tenant
+    date_from   = request.GET.get('date_from', '')
+    date_to     = request.GET.get('date_to', '')
+    role_filter = request.GET.get('role', '')
+    user_filter = request.GET.get('user', '')
+
+    entries = CommissionEntry.objects.filter(sheet__tenant=tenant).select_related('client','sheet')
+    if date_from:
+        entries = entries.filter(sheet__created_at__date__gte=date_from)
+    if date_to:
+        entries = entries.filter(sheet__created_at__date__lte=date_to)
+    if role_filter == 'sales' and user_filter:
+        entries = entries.filter(sales_rep_id=user_filter)
+    elif role_filter == 'accountant' and user_filter:
+        entries = entries.filter(client__assigned_accountant_id=user_filter)
+    elif role_filter == 'review' and user_filter:
+        entries = entries.filter(client__assigned_review_id=user_filter)
 
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = 'العمولات'
     _style_header(ws, ['الشيت','العميل','المبلغ','عمولة المناديب','عمولة المحاسبين','عمولة المراجعين'])
-    for sheet in sheets:
-        for e in sheet.entries.select_related('client'):
-            ws.append([
-                str(sheet), e.client.name if e.client else '',
-                float(e.amount), float(e.commission_amount),
-                float(e.accountant_commission_amount), float(e.review_commission_amount),
-            ])
+    for e in entries:
+        ws.append([
+            str(e.sheet), e.client.name if e.client else '',
+            float(e.amount), float(e.commission_amount),
+            float(e.accountant_commission_amount), float(e.review_commission_amount),
+        ])
     response = _make_excel_response('commissions.xlsx')
     wb.save(response)
     return response
@@ -382,10 +396,21 @@ def export_events_excel(request):
 @admin_required
 def export_workflow_excel(request):
     import openpyxl
-    from workflow.models import ReviewClient
+    from workflow.models import ReviewClient, WorkflowStage
 
-    tenant = request.user.tenant
+    tenant       = request.user.tenant
+    stage_filter = request.GET.get('stage', '')
+    status_filter= request.GET.get('status', '')
+
     clients = ReviewClient.objects.filter(tenant=tenant).prefetch_related('stages')
+    if stage_filter or status_filter:
+        stage_qs = WorkflowStage.objects.filter(client__tenant=tenant)
+        if stage_filter:
+            stage_qs = stage_qs.filter(stage=stage_filter)
+        if status_filter:
+            stage_qs = stage_qs.filter(status=status_filter)
+        client_ids = stage_qs.values_list('client_id', flat=True).distinct()
+        clients = clients.filter(pk__in=client_ids)
 
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -562,23 +587,39 @@ def export_commissions_pdf(request):
     from commissions.models import CommissionSheet
     from django.db.models import Sum
 
-    tenant = request.user.tenant
-    sheets = CommissionSheet.objects.filter(tenant=tenant).annotate(
-        t_amount=Sum('entries__amount'), t_sales=Sum('entries__commission_amount'),
-        t_accountant=Sum('entries__accountant_commission_amount'),
-        t_review=Sum('entries__review_commission_amount'),
-    )
+    from commissions.models import CommissionEntry
+
+    tenant      = request.user.tenant
+    date_from   = request.GET.get('date_from', '')
+    date_to     = request.GET.get('date_to', '')
+    role_filter = request.GET.get('role', '')
+    user_filter = request.GET.get('user', '')
+
+    entries = CommissionEntry.objects.filter(sheet__tenant=tenant).select_related('client','sheet')
+    if date_from:
+        entries = entries.filter(sheet__created_at__date__gte=date_from)
+    if date_to:
+        entries = entries.filter(sheet__created_at__date__lte=date_to)
+    if role_filter == 'sales' and user_filter:
+        entries = entries.filter(sales_rep_id=user_filter)
+    elif role_filter == 'accountant' and user_filter:
+        entries = entries.filter(client__assigned_accountant_id=user_filter)
+    elif role_filter == 'review' and user_filter:
+        entries = entries.filter(client__assigned_review_id=user_filter)
+
     username = request.user.get_full_name() or request.user.username
 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=landscape(A4), rightMargin=1*cm, leftMargin=1*cm,
                             topMargin=2.5*cm, bottomMargin=1.5*cm)
     col_w = [7.7*cm, 5*cm, 5*cm, 5*cm, 5*cm]  # total 27.7
-    rows = [['الشيت','إجمالي المبالغ','عمولات المناديب','عمولات المحاسبين','عمولات المراجعين']]
-    for s in sheets:
-        rows.append([str(s),
-            str(round(s.t_amount or 0, 2)), str(round(s.t_sales or 0, 2)),
-            str(round(s.t_accountant or 0, 2)), str(round(s.t_review or 0, 2))])
+    rows = [['الشيت','العميل','المبلغ','عمولة المناديب','عمولة المحاسبين']]
+    for e in entries:
+        rows.append([
+            str(e.sheet), e.client.name if e.client else '—',
+            str(round(e.amount or 0, 2)), str(round(e.commission_amount or 0, 2)),
+            str(round(e.accountant_commission_amount or 0, 2)),
+        ])
 
     story = [_build_table(rows, col_widths=col_w)]
     doc.build(story, onFirstPage=lambda c,d: _pdf_header(c,d,'تقرير العمولات', username),
@@ -597,8 +638,21 @@ def export_events_pdf(request):
     from reportlab.lib.units import cm
     from calendar_app.models import Event
 
-    tenant = request.user.tenant
+    tenant      = request.user.tenant
+    date_from   = request.GET.get('date_from', '')
+    date_to     = request.GET.get('date_to', '')
+    user_filter = request.GET.get('user', '')
+    source_filter = request.GET.get('source', '')
+
     events = Event.objects.filter(tenant=tenant).select_related('assigned_to','client').order_by('-start_datetime')
+    if date_from:
+        events = events.filter(start_datetime__date__gte=date_from)
+    if date_to:
+        events = events.filter(start_datetime__date__lte=date_to)
+    if user_filter:
+        events = events.filter(assigned_to_id=user_filter)
+    if source_filter:
+        events = events.filter(source=source_filter)
     username = request.user.get_full_name() or request.user.username
 
     buf = io.BytesIO()
@@ -632,8 +686,22 @@ def export_workflow_pdf(request):
     from reportlab.lib.units import cm
     from workflow.models import ReviewClient
 
-    tenant  = request.user.tenant
+    from workflow.models import WorkflowStage
+
+    tenant        = request.user.tenant
+    stage_filter  = request.GET.get('stage', '')
+    status_filter = request.GET.get('status', '')
+
     clients = ReviewClient.objects.filter(tenant=tenant).prefetch_related('stages')
+    if stage_filter or status_filter:
+        stage_qs = WorkflowStage.objects.filter(client__tenant=tenant)
+        if stage_filter:
+            stage_qs = stage_qs.filter(stage=stage_filter)
+        if status_filter:
+            stage_qs = stage_qs.filter(status=status_filter)
+        client_ids = stage_qs.values_list('client_id', flat=True).distinct()
+        clients = clients.filter(pk__in=client_ids)
+
     username = request.user.get_full_name() or request.user.username
 
     buf = io.BytesIO()
