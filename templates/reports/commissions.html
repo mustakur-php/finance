@@ -11,17 +11,69 @@
     </div>
 </div>
 
-<!-- فلتر تاريخ -->
+<!-- فلاتر -->
 <div class="card mb-3">
     <div class="card-body py-2">
-        <form method="get" class="d-flex gap-2 align-items-end flex-wrap">
-            <div><label class="form-label small mb-1">من</label><input type="date" name="date_from" value="{{ filters.date_from }}" class="form-control form-control-sm"></div>
-            <div><label class="form-label small mb-1">إلى</label><input type="date" name="date_to" value="{{ filters.date_to }}" class="form-control form-control-sm"></div>
-            <button class="btn btn-primary btn-sm">بحث</button>
-            {% if filters.date_from or filters.date_to %}<a href="{% url 'report_commissions' %}" class="btn btn-outline-secondary btn-sm">إلغاء</a>{% endif %}
+        <form method="get" class="row g-2 align-items-end" id="commFilter">
+            <div class="col-md-2">
+                <label class="form-label small mb-1">من</label>
+                <input type="date" name="date_from" value="{{ filters.date_from }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">إلى</label>
+                <input type="date" name="date_to" value="{{ filters.date_to }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">القسم</label>
+                <select name="role" class="form-select form-select-sm" id="roleSelect" onchange="updateUsers()">
+                    <option value="">كل الأقسام</option>
+                    <option value="sales"      {% if filters.role == 'sales' %}selected{% endif %}>المناديب</option>
+                    <option value="accountant" {% if filters.role == 'accountant' %}selected{% endif %}>المحاسبون</option>
+                    <option value="review"     {% if filters.role == 'review' %}selected{% endif %}>المراجعون</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small mb-1">المستخدم</label>
+                <select name="user" class="form-select form-select-sm" id="userSelect">
+                    <option value="">كل المستخدمين</option>
+                    <optgroup label="المناديب" id="grp-sales" {% if filters.role and filters.role != 'sales' %}style="display:none"{% endif %}>
+                        {% for u in sales_users %}
+                        <option value="{{ u.pk }}" data-role="sales" {% if filters.user == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
+                        {% endfor %}
+                    </optgroup>
+                    <optgroup label="المحاسبون" id="grp-accountant" {% if filters.role and filters.role != 'accountant' %}style="display:none"{% endif %}>
+                        {% for u in accountant_users %}
+                        <option value="{{ u.pk }}" data-role="accountant" {% if filters.user == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
+                        {% endfor %}
+                    </optgroup>
+                    <optgroup label="المراجعون" id="grp-review" {% if filters.role and filters.role != 'review' %}style="display:none"{% endif %}>
+                        {% for u in review_users %}
+                        <option value="{{ u.pk }}" data-role="review" {% if filters.user == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
+                        {% endfor %}
+                    </optgroup>
+                </select>
+            </div>
+            <div class="col-md-1">
+                <button class="btn btn-primary btn-sm w-100">بحث</button>
+            </div>
+            <div class="col-md-1">
+                <a href="{% url 'report_commissions' %}" class="btn btn-outline-secondary btn-sm w-100">إلغاء</a>
+            </div>
         </form>
     </div>
 </div>
+
+<script>
+function updateUsers() {
+    const role = document.getElementById('roleSelect').value;
+    const sel  = document.getElementById('userSelect');
+    sel.value  = '';
+    ['sales','accountant','review'].forEach(r => {
+        const grp = document.getElementById('grp-' + r);
+        grp.style.display = (!role || role === r) ? '' : 'none';
+    });
+}
+</script>
 
 <!-- ملخص الإجماليات -->
 <div class="row g-3 mb-4">

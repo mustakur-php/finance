@@ -102,17 +102,33 @@ def report_clients(request):
 @admin_required
 def report_commissions(request):
     from commissions.models import CommissionSheet, CommissionEntry
+    from accounts.models import User
 
-    tenant = request.user.tenant
+    tenant      = request.user.tenant
     date_from, date_to = _date_filters(request)
+    role_filter = request.GET.get('role', '')
+    user_filter = request.GET.get('user', '')
 
-    sheets = CommissionSheet.objects.filter(tenant=tenant)
+    sheets  = CommissionSheet.objects.filter(tenant=tenant)
     entries = CommissionEntry.objects.filter(sheet__tenant=tenant)
 
     if date_from:
         entries = entries.filter(sheet__created_at__date__gte=date_from)
     if date_to:
         entries = entries.filter(sheet__created_at__date__lte=date_to)
+
+    # فلتر المستخدم حسب الدور
+    if role_filter == 'sales' and user_filter:
+        entries = entries.filter(sales_rep_id=user_filter)
+    elif role_filter == 'accountant' and user_filter:
+        entries = entries.filter(client__assigned_accountant_id=user_filter)
+    elif role_filter == 'review' and user_filter:
+        entries = entries.filter(client__assigned_review_id=user_filter)
+
+    # قوائم المستخدمين للفلتر
+    sales_users      = User.objects.filter(tenant=tenant, role='sales',      is_active=True)
+    accountant_users = User.objects.filter(tenant=tenant, role='accountant', is_active=True)
+    review_users     = User.objects.filter(tenant=tenant, role='review',     is_active=True)
 
     totals = entries.aggregate(
         total_amount    = Sum('amount'),
@@ -133,8 +149,15 @@ def report_commissions(request):
     ).order_by('-total')[:10]
 
     return render(request, 'reports/commissions.html', {
-        'totals': totals,
-        'by_sheet': by_sheet,
+        'totals':           totals,
+        'by_sheet':         by_sheet,
+        'sales_users':      sales_users,
+        'accountant_users': accountant_users,
+        'review_users':     review_users,
+        'filters': {
+            'date_from': date_from, 'date_to': date_to,
+            'role': role_filter, 'user': user_filter,
+        },
         'top_clients': top_clients,
         'filters': {'date_from': date_from, 'date_to': date_to},
     })
