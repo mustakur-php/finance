@@ -506,7 +506,7 @@ def _register_arabic_font():
 
 
 def _ar(text):
-    """Reshape + bidi Arabic text. Only reshape words that contain Arabic characters."""
+    """Reshape + bidi for single-line use (drawRightString headers). Reverses full word order."""
     import arabic_reshaper
     from bidi.algorithm import get_display
     import re
@@ -520,6 +520,25 @@ def _ar(text):
             return w
         reshaped = ' '.join(_reshape_word(w) for w in text.split(' '))
         return get_display(reshaped)
+    except Exception:
+        return text
+
+
+def _ar_wrap(text):
+    """Reshape for Paragraph cells that may wrap. Applies get_display per word so
+    word order stays logical — reportlab wraps correctly across lines."""
+    import arabic_reshaper
+    from bidi.algorithm import get_display
+    import re
+    if not text:
+        return ''
+    text = str(text)
+    try:
+        def _ar_word(w):
+            if re.search(r'[؀-ۿ]', w):
+                return get_display(arabic_reshaper.reshape(w))
+            return w
+        return ' '.join(_ar_word(w) for w in text.split(' '))
     except Exception:
         return text
 
@@ -563,7 +582,7 @@ def _build_table(data, col_widths=None):
 
     def _cell(text, is_header=False):
         style = head_style if is_header else body_style
-        return Paragraph(_ar(str(text)) if text else '', style)
+        return Paragraph(_ar_wrap(str(text)) if text else '', style)
 
     ar_data = []
     for i, row in enumerate(data):
