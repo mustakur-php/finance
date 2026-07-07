@@ -12,6 +12,47 @@ def _date_filters(request):
     return date_from, date_to
 
 
+def _apply_commission_filters(entries, date_from, date_to, role_filter, user_filter):
+    """Apply all commissions filters to an entries queryset. Used by view + exports."""
+    if date_from:
+        entries = entries.filter(sheet__created_at__date__gte=date_from)
+    if date_to:
+        entries = entries.filter(sheet__created_at__date__lte=date_to)
+
+    if role_filter == 'sales':
+        if user_filter:
+            entries = entries.filter(sales_rep_id=user_filter)
+        else:
+            entries = entries.filter(commission_amount__gt=0)
+    elif role_filter == 'accountant':
+        if user_filter:
+            entries = entries.filter(client__assigned_accountant_id=user_filter)
+        else:
+            entries = entries.filter(accountant_commission_amount__gt=0)
+    elif role_filter == 'review':
+        if user_filter:
+            entries = entries.filter(client__assigned_review_id=user_filter)
+        else:
+            entries = entries.filter(review_commission_amount__gt=0)
+
+    return entries
+
+
+def _build_bysheet(sheets_qs, entry_ids):
+    """Annotate sheets with totals for the given filtered entry_ids."""
+    return (
+        sheets_qs.filter(entries__id__in=entry_ids)
+        .annotate(
+            t_amount     = Sum('entries__amount',                       filter=Q(entries__id__in=entry_ids)),
+            t_sales      = Sum('entries__commission_amount',            filter=Q(entries__id__in=entry_ids)),
+            t_accountant = Sum('entries__accountant_commission_amount', filter=Q(entries__id__in=entry_ids)),
+            t_review     = Sum('entries__review_commission_amount',     filter=Q(entries__id__in=entry_ids)),
+        )
+        .distinct()
+        .order_by('-created_at')
+    )
+
+
 # ─────────────────────────────────────────
 # الصفحة الرئيسية للتقارير
 # ─────────────────────────────────────────
@@ -111,21 +152,8 @@ def report_commissions(request):
 
     sheets  = CommissionSheet.objects.filter(tenant=tenant)
     entries = CommissionEntry.objects.filter(sheet__tenant=tenant)
+    entries = _apply_commission_filters(entries, date_from, date_to, role_filter, user_filter)
 
-    if date_from:
-        entries = entries.filter(sheet__created_at__date__gte=date_from)
-    if date_to:
-        entries = entries.filter(sheet__created_at__date__lte=date_to)
-
-    # فلتر المستخدم حسب الدور
-    if role_filter == 'sales' and user_filter:
-        entries = entries.filter(sales_rep_id=user_filter)
-    elif role_filter == 'accountant' and user_filter:
-        entries = entries.filter(client__assigned_accountant_id=user_filter)
-    elif role_filter == 'review' and user_filter:
-        entries = entries.filter(client__assigned_review_id=user_filter)
-
-    # قوائم المستخدمين للفلتر
     sales_users      = User.objects.filter(tenant=tenant, role='sales',      is_active=True)
     accountant_users = User.objects.filter(tenant=tenant, role='accountant', is_active=True)
     review_users     = User.objects.filter(tenant=tenant, role='review',     is_active=True)
@@ -137,14 +165,8 @@ def report_commissions(request):
         total_review    = Sum('review_commission_amount'),
     )
 
-    # by_sheet يعكس نفس الفلاتر المطبقة على entries
     entry_ids = list(entries.values_list('id', flat=True))
-    by_sheet = sheets.filter(entries__id__in=entry_ids).annotate(
-        t_amount    = Sum('entries__amount',                       filter=Q(entries__id__in=entry_ids)),
-        t_sales     = Sum('entries__commission_amount',            filter=Q(entries__id__in=entry_ids)),
-        t_accountant= Sum('entries__accountant_commission_amount', filter=Q(entries__id__in=entry_ids)),
-        t_review    = Sum('entries__review_commission_amount',     filter=Q(entries__id__in=entry_ids)),
-    ).distinct().order_by('-created_at')
+    by_sheet  = _build_bysheet(sheets, entry_ids)
 
     top_clients = entries.values('client__name').annotate(
         total=Sum('amount')
@@ -355,16 +377,7 @@ def export_commissions_excel(request):
     user_filter = request.GET.get('user', '')
 
     entries = CommissionEntry.objects.filter(sheet__tenant=tenant).select_related('client','sheet')
-    if date_from:
-        entries = entries.filter(sheet__created_at__date__gte=date_from)
-    if date_to:
-        entries = entries.filter(sheet__created_at__date__lte=date_to)
-    if role_filter == 'sales' and user_filter:
-        entries = entries.filter(sales_rep_id=user_filter)
-    elif role_filter == 'accountant' and user_filter:
-        entries = entries.filter(client__assigned_accountant_id=user_filter)
-    elif role_filter == 'review' and user_filter:
-        entries = entries.filter(client__assigned_review_id=user_filter)
+    entries = _apply_commission_filters(entries, date_from, date_to, role_filter, user_filter)
 
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -640,32 +653,18 @@ def export_commissions_pdf(request):
     role_filter = request.GET.get('role', '')
     user_filter = request.GET.get('user', '')
 
+    from commissions.models import CommissionSheet
     entries = CommissionEntry.objects.filter(sheet__tenant=tenant).select_related('client','sheet')
-    if date_from:
-        entries = entries.filter(sheet__created_at__date__gte=date_from)
-    if date_to:
-        entries = entries.filter(sheet__created_at__date__lte=date_to)
-    if role_filter == 'sales' and user_filter:
-        entries = entries.filter(sales_rep_id=user_filter)
-    elif role_filter == 'accountant' and user_filter:
-        entries = entries.filter(client__assigned_accountant_id=user_filter)
-    elif role_filter == 'review' and user_filter:
-        entries = entries.filter(client__assigned_review_id=user_filter)
+    entries = _apply_commission_filters(entries, date_from, date_to, role_filter, user_filter)
 
     username = request.user.get_full_name() or request.user.username
 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=landscape(A4), rightMargin=1*cm, leftMargin=1*cm,
                             topMargin=2.5*cm, bottomMargin=1.5*cm)
-    # نفس by_sheet في الـ view
-    from commissions.models import CommissionSheet
     entry_ids = list(entries.values_list('id', flat=True))
-    by_sheet = CommissionSheet.objects.filter(tenant=tenant, entries__id__in=entry_ids).annotate(
-        t_amount    = Sum('entries__amount',                       filter=Q(entries__id__in=entry_ids)),
-        t_sales     = Sum('entries__commission_amount',            filter=Q(entries__id__in=entry_ids)),
-        t_accountant= Sum('entries__accountant_commission_amount', filter=Q(entries__id__in=entry_ids)),
-        t_review    = Sum('entries__review_commission_amount',     filter=Q(entries__id__in=entry_ids)),
-    ).distinct().order_by('-created_at')
+    sheets    = CommissionSheet.objects.filter(tenant=tenant)
+    by_sheet  = _build_bysheet(sheets, entry_ids)
 
     col_w = [7.7*cm, 5*cm, 5*cm, 5*cm, 5*cm]  # total 27.7
     rows = [['الشيت','إجمالي المبالغ','عمولات المناديب','عمولات المحاسبين','عمولات المراجعين']]
