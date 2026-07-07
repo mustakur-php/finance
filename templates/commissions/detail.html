@@ -228,7 +228,7 @@
                 {% if entries %}
                 <tfoot class="table-light fw-bold">
                     <tr>
-                        <td colspan="5" class="text-start">الإجمالي ({{ entries.count }} سطر)</td>
+                        <td colspan="6" class="text-start">الإجمالي ({{ entries|length }} سطر)</td>
                         <td class="text-end">{{ totals.total_amount|default:"0"|floatformat:2 }}</td>
                         <td class="text-end text-success">{{ totals.total_commission|default:"0"|floatformat:2 }}</td>
                         <td class="text-end text-warning">{{ totals.total_accountant_commission|default:"0"|floatformat:2 }}</td>
