@@ -379,34 +379,11 @@ def export_sheet_pdf(request, pk):
     from reportlab.lib import colors
     from reportlab.platypus import Table, TableStyle
     from django.http import HttpResponse
-    import arabic_reshaper
-    from bidi.algorithm import get_display
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
+    from reports.views import _ar as ar, _register_arabic_font
 
-    if 'Arial' not in pdfmetrics.getRegisteredFontNames():
-        import platform, os
-        if platform.system() == 'Windows':
-            reg, bold = r'C:\Windows\Fonts\arial.ttf', r'C:\Windows\Fonts\arialbd.ttf'
-        else:
-            candidates = [
-                ('/usr/share/fonts/truetype/freefont/FreeSerif.ttf', '/usr/share/fonts/truetype/freefont/FreeSerifBold.ttf'),
-                ('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'),
-                ('/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf', '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf'),
-            ]
-            reg, bold = next(((r, b) for r, b in candidates if os.path.exists(r)), (candidates[0]))
-        pdfmetrics.registerFont(TTFont('Arial', reg))
-        pdfmetrics.registerFont(TTFont('Arial-Bold', bold))
-
-    def ar(text):
-        import re
-        try:
-            text = str(text)
-            def _reshape_word(w):
-                return arabic_reshaper.reshape(w) if re.search(r'[؀-ۿ]', w) else w
-            return get_display(' '.join(_reshape_word(w) for w in text.split(' ')))
-        except Exception:
-            return str(text)
+    _register_arabic_font()
 
     sheet = get_object_or_404(CommissionSheet, pk=pk, tenant=request.user.tenant)
     entries = list(_apply_sheet_filters(_get_sheet_entries(sheet), request))
