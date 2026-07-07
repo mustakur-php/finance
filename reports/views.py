@@ -653,28 +653,37 @@ def export_commissions_pdf(request):
     role_filter = request.GET.get('role', '')
     user_filter = request.GET.get('user', '')
 
-    from commissions.models import CommissionSheet
-    entries = CommissionEntry.objects.filter(sheet__tenant=tenant).select_related('client','sheet')
+    from commissions.models import CommissionEntry
+    entries = CommissionEntry.objects.filter(sheet__tenant=tenant).select_related('sheet')
     entries = _apply_commission_filters(entries, date_from, date_to, role_filter, user_filter)
 
     username = request.user.get_full_name() or request.user.username
 
+    # نجمّع المبالغ حسب الشيت في Python مباشرةً — أضمن من ORM aggregation
+    from collections import OrderedDict
+    sheet_totals = OrderedDict()
+    for e in entries:
+        sid = e.sheet_id
+        if sid not in sheet_totals:
+            sheet_totals[sid] = {'name': str(e.sheet), 'amount': 0, 'sales': 0, 'accountant': 0, 'review': 0}
+        sheet_totals[sid]['amount']     += float(e.amount or 0)
+        sheet_totals[sid]['sales']      += float(e.commission_amount or 0)
+        sheet_totals[sid]['accountant'] += float(e.accountant_commission_amount or 0)
+        sheet_totals[sid]['review']     += float(e.review_commission_amount or 0)
+
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=landscape(A4), rightMargin=1*cm, leftMargin=1*cm,
                             topMargin=2.5*cm, bottomMargin=1.5*cm)
-    entry_ids = list(entries.values_list('id', flat=True))
-    sheets    = CommissionSheet.objects.filter(tenant=tenant)
-    by_sheet  = _build_bysheet(sheets, entry_ids)
 
     col_w = [7.7*cm, 5*cm, 5*cm, 5*cm, 5*cm]  # total 27.7
     rows = [['الشيت','إجمالي المبالغ','عمولات المناديب','عمولات المحاسبين','عمولات المراجعين']]
-    for s in by_sheet:
+    for data in sheet_totals.values():
         rows.append([
-            str(s),
-            str(round(s.t_amount or 0, 2)),
-            str(round(s.t_sales or 0, 2)),
-            str(round(s.t_accountant or 0, 2)),
-            str(round(s.t_review or 0, 2)),
+            data['name'],
+            str(round(data['amount'], 2)),
+            str(round(data['sales'], 2)),
+            str(round(data['accountant'], 2)),
+            str(round(data['review'], 2)),
         ])
 
     story = [_build_table(rows, col_widths=col_w)]
