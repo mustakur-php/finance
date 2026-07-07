@@ -399,8 +399,12 @@ def export_sheet_pdf(request, pk):
         pdfmetrics.registerFont(TTFont('Arial-Bold', bold))
 
     def ar(text):
+        import re
         try:
-            return get_display(arabic_reshaper.reshape(str(text)))
+            text = str(text)
+            def _reshape_word(w):
+                return arabic_reshaper.reshape(w) if re.search(r'[؀-ۿ]', w) else w
+            return get_display(' '.join(_reshape_word(w) for w in text.split(' ')))
         except Exception:
             return str(text)
 
