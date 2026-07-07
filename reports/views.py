@@ -675,15 +675,18 @@ def export_commissions_pdf(request):
     doc = SimpleDocTemplate(buf, pagesize=landscape(A4), rightMargin=1*cm, leftMargin=1*cm,
                             topMargin=2.5*cm, bottomMargin=1.5*cm)
 
+    def _fmt(v):
+        return f"{v:g}" if v != int(v) else str(int(v))
+
     col_w = [7.7*cm, 5*cm, 5*cm, 5*cm, 5*cm]  # total 27.7
     rows = [['الشيت','إجمالي المبالغ','عمولات المناديب','عمولات المحاسبين','عمولات المراجعين']]
     for data in sheet_totals.values():
         rows.append([
             data['name'],
-            str(round(data['amount'], 2)),
-            str(round(data['sales'], 2)),
-            str(round(data['accountant'], 2)),
-            str(round(data['review'], 2)),
+            _fmt(data['amount']),
+            _fmt(data['sales']),
+            _fmt(data['accountant']),
+            _fmt(data['review']),
         ])
 
     story = [_build_table(rows, col_widths=col_w)]

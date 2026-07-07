@@ -11,7 +11,9 @@ class CommissionSheet(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.name} ({self.period_start} - {self.period_end})"
+        if self.period_start and self.period_end:
+            return f"{self.name} ({self.period_start} - {self.period_end})"
+        return self.name
 
     class Meta:
         verbose_name = 'شيت عمولات'
