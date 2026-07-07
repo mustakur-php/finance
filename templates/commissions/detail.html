@@ -54,7 +54,7 @@
     <div class="card-body py-2">
         <form method="get" class="row g-2 align-items-end">
             <div class="col-md-4">
-                <label class="form-label small text-muted mb-1">بحث (عميل / مندوب)</label>
+                <label class="form-label small text-muted mb-1">بحث (عميل / مندوب / محاسب / مراجع)</label>
                 <div class="input-group input-group-sm">
                     <span class="input-group-text"><i class="bi bi-search"></i></span>
                     <input type="text" name="q" class="form-control" placeholder="اكتب للبحث..." value="{{ q }}">
@@ -93,10 +93,10 @@
                     </button>
                 </form>
                 {% endif %}
-                <a href="{% url 'export_sheet_excel' sheet.pk %}" class="btn btn-outline-success btn-sm">
+                <a href="{% url 'export_sheet_excel' sheet.pk %}?{{ request.GET.urlencode }}" class="btn btn-outline-success btn-sm">
                     <i class="bi bi-file-earmark-excel me-1"></i> Excel
                 </a>
-                <a href="{% url 'export_sheet_pdf' sheet.pk %}" class="btn btn-outline-danger btn-sm" target="_blank">
+                <a href="{% url 'export_sheet_pdf' sheet.pk %}?{{ request.GET.urlencode }}" class="btn btn-outline-danger btn-sm" target="_blank">
                     <i class="bi bi-file-earmark-pdf me-1"></i> PDF
                 </a>
                 <a href="{% url 'commissions_list' %}" class="btn btn-outline-secondary btn-sm">

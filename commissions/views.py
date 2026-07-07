@@ -78,7 +78,11 @@ def commission_detail(request, pk):
             Q(client__company__icontains=q) |
             Q(sales_rep__first_name__icontains=q) |
             Q(sales_rep__last_name__icontains=q) |
-            Q(sales_rep__username__icontains=q)
+            Q(sales_rep__username__icontains=q) |
+            Q(client__assigned_accountant__first_name__icontains=q) |
+            Q(client__assigned_accountant__last_name__icontains=q) |
+            Q(client__assigned_review__first_name__icontains=q) |
+            Q(client__assigned_review__last_name__icontains=q)
         )
     if date_from:
         entries = entries.filter(entry_date__gte=date_from)
@@ -275,6 +279,30 @@ def _get_sheet_entries(sheet):
     ).prefetch_related('entry_commission_rules').order_by('client__name')
 
 
+def _apply_sheet_filters(entries, request):
+    """Apply q / date_from / date_to filters from GET params."""
+    q         = request.GET.get('q', '').strip()
+    date_from = request.GET.get('date_from', '')
+    date_to   = request.GET.get('date_to', '')
+    if q:
+        entries = entries.filter(
+            Q(client__name__icontains=q) |
+            Q(client__company__icontains=q) |
+            Q(sales_rep__first_name__icontains=q) |
+            Q(sales_rep__last_name__icontains=q) |
+            Q(sales_rep__username__icontains=q) |
+            Q(client__assigned_accountant__first_name__icontains=q) |
+            Q(client__assigned_accountant__last_name__icontains=q) |
+            Q(client__assigned_review__first_name__icontains=q) |
+            Q(client__assigned_review__last_name__icontains=q)
+        )
+    if date_from:
+        entries = entries.filter(entry_date__gte=date_from)
+    if date_to:
+        entries = entries.filter(entry_date__lte=date_to)
+    return entries
+
+
 @login_required
 @admin_required
 def export_sheet_excel(request, pk):
@@ -284,7 +312,7 @@ def export_sheet_excel(request, pk):
     from django.http import HttpResponse
 
     sheet = get_object_or_404(CommissionSheet, pk=pk, tenant=request.user.tenant)
-    entries = _get_sheet_entries(sheet)
+    entries = _apply_sheet_filters(_get_sheet_entries(sheet), request)
 
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -377,7 +405,7 @@ def export_sheet_pdf(request, pk):
             return str(text)
 
     sheet = get_object_or_404(CommissionSheet, pk=pk, tenant=request.user.tenant)
-    entries = list(_get_sheet_entries(sheet))
+    entries = list(_apply_sheet_filters(_get_sheet_entries(sheet), request))
     username = request.user.get_full_name() or request.user.username
 
     buf = io.BytesIO()
