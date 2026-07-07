@@ -429,7 +429,7 @@ def export_sheet_pdf(request, pk):
         canvas.setFont('Arial', 8)
         from django.utils import timezone as tz
         now_str = tz.localtime().strftime('%Y/%m/%d %H:%M')
-        canvas.drawString(1*cm, doc.pagesize[1]-1.3*cm, f'{now_str} | {username}')
+        canvas.drawString(1*cm, doc.pagesize[1]-1.3*cm, f'{now_str} | {_ar(username)}')
         canvas.restoreState()
 
     doc.build([_build_table(rows, col_widths=col_w)],

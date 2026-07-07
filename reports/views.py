@@ -563,7 +563,7 @@ def _pdf_header(canvas, doc, title, username):
     canvas.setFont('Arial', 8)
     from django.utils import timezone
     now_str = timezone.localtime().strftime('%Y/%m/%d %H:%M')
-    canvas.drawString(1*cm, doc.pagesize[1] - 1.3*cm, f'{now_str} | {username}')
+    canvas.drawString(1*cm, doc.pagesize[1] - 1.3*cm, f'{now_str} | {_ar(username)}')
     canvas.setFillColor(colors.HexColor('#666666'))
     canvas.setFont('Arial', 8)
     canvas.drawCentredString(doc.pagesize[0]/2, 0.5*cm, _ar('نظام إدارة العملاء'))
