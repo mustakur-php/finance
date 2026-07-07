@@ -373,75 +373,51 @@ def export_sheet_excel(request, pk):
 @admin_required
 def export_sheet_pdf(request, pk):
     import io
-    from reportlab.platypus import SimpleDocTemplate, Spacer
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.units import cm
     from reportlab.lib import colors
-    from reportlab.platypus import Table, TableStyle
+    from reportlab.platypus import SimpleDocTemplate
     from django.http import HttpResponse
-    from reportlab.pdfbase import pdfmetrics
-    from reportlab.pdfbase.ttfonts import TTFont
-    from reports.views import _ar as ar, _register_arabic_font
+    from reports.views import _ar, _register_arabic_font, _build_table
 
     _register_arabic_font()
 
-    sheet = get_object_or_404(CommissionSheet, pk=pk, tenant=request.user.tenant)
+    sheet   = get_object_or_404(CommissionSheet, pk=pk, tenant=request.user.tenant)
     entries = list(_apply_sheet_filters(_get_sheet_entries(sheet), request))
     username = request.user.get_full_name() or request.user.username
+
+    # landscape A4 usable width ≈ 27.7 cm
+    col_w = [3.2*cm, 2.8*cm, 3*cm, 3*cm, 3*cm, 2.5*cm, 2.5*cm, 2.5*cm, 2.5*cm, 2.7*cm]
+
+    rows = [['العميل','الشركة','المندوب','المحاسب','المراجع','المبلغ','ع.المندوب','ع.المحاسب','ع.المراجع','الإجمالي']]
+    for e in entries:
+        total = float(e.commission_amount) + float(e.accountant_commission_amount) + float(e.review_commission_amount)
+        rows.append([
+            e.client.name,
+            e.client.company or '',
+            e.sales_rep.get_full_name() or e.sales_rep.username,
+            e.client.assigned_accountant.get_full_name() if e.client.assigned_accountant else '—',
+            e.client.assigned_review.get_full_name() if e.client.assigned_review else '—',
+            f"{float(e.amount):,.2f}",
+            f"{float(e.commission_amount):,.2f}",
+            f"{float(e.accountant_commission_amount):,.2f}",
+            f"{float(e.review_commission_amount):,.2f}",
+            f"{total:,.2f}",
+        ])
+    # صف الإجمالي
+    rows.append([
+        'الإجمالي', '', '', '', '',
+        f"{sum(float(e.amount) for e in entries):,.2f}",
+        f"{sum(float(e.commission_amount) for e in entries):,.2f}",
+        f"{sum(float(e.accountant_commission_amount) for e in entries):,.2f}",
+        f"{sum(float(e.review_commission_amount) for e in entries):,.2f}",
+        f"{sum(float(e.commission_amount)+float(e.accountant_commission_amount)+float(e.review_commission_amount) for e in entries):,.2f}",
+    ])
 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=landscape(A4),
                             rightMargin=1*cm, leftMargin=1*cm,
                             topMargin=2.5*cm, bottomMargin=1.5*cm)
-
-    col_w = [3.2*cm, 2.8*cm, 3*cm, 3*cm, 3*cm, 2.5*cm, 2.5*cm, 2.5*cm, 2.5*cm, 2.7*cm]
-
-    headers = ['العميل', 'الشركة', 'المندوب', 'المحاسب', 'المراجع', 'المبلغ',
-               'ع.المندوب', 'ع.المحاسب', 'ع.المراجع', 'الإجمالي']
-    rows = [[ar(h) for h in reversed(headers)]]
-
-    for entry in entries:
-        total = float(entry.commission_amount) + float(entry.accountant_commission_amount) + float(entry.review_commission_amount)
-        row = [
-            entry.client.name,
-            entry.client.company or '',
-            entry.sales_rep.get_full_name() or entry.sales_rep.username,
-            entry.client.assigned_accountant.get_full_name() if entry.client.assigned_accountant else '—',
-            entry.client.assigned_review.get_full_name() if entry.client.assigned_review else '—',
-            f"{float(entry.amount):,.2f}",
-            f"{float(entry.commission_amount):,.2f}",
-            f"{float(entry.accountant_commission_amount):,.2f}",
-            f"{float(entry.review_commission_amount):,.2f}",
-            f"{total:,.2f}",
-        ]
-        rows.append([ar(c) for c in reversed(row)])
-
-    # صف المجاميع
-    totals_row = [
-        ar('الإجمالي'), '', '', '', '',
-        ar(f"{sum(float(e.amount) for e in entries):,.2f}"),
-        ar(f"{sum(float(e.commission_amount) for e in entries):,.2f}"),
-        ar(f"{sum(float(e.accountant_commission_amount) for e in entries):,.2f}"),
-        ar(f"{sum(float(e.review_commission_amount) for e in entries):,.2f}"),
-        ar(f"{sum(float(e.commission_amount)+float(e.accountant_commission_amount)+float(e.review_commission_amount) for e in entries):,.2f}"),
-    ]
-    rows.append(list(reversed(totals_row)))
-
-    t = Table(rows, colWidths=list(reversed(col_w)), repeatRows=1)
-    t.setStyle(TableStyle([
-        ('BACKGROUND',    (0, 0), (-1, 0),  colors.HexColor('#1A3A5C')),
-        ('TEXTCOLOR',     (0, 0), (-1, 0),  colors.white),
-        ('FONTNAME',      (0, 0), (-1, -1), 'Arial'),
-        ('FONTNAME',      (0, 0), (-1, 0),  'Arial-Bold'),
-        ('FONTNAME',      (0, -1),(-1, -1), 'Arial-Bold'),
-        ('BACKGROUND',    (0, -1),(-1, -1), colors.HexColor('#E8F0F8')),
-        ('FONTSIZE',      (0, 0), (-1, -1), 8),
-        ('ALIGN',         (0, 0), (-1, -1), 'RIGHT'),
-        ('ROWBACKGROUNDS',(0, 1), (-1, -2), [colors.white, colors.HexColor('#f5f7fa')]),
-        ('GRID',          (0, 0), (-1, -1), 0.3, colors.HexColor('#dddddd')),
-        ('TOPPADDING',    (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-    ]))
 
     def header_cb(canvas, doc):
         canvas.saveState()
@@ -449,14 +425,15 @@ def export_sheet_pdf(request, pk):
         canvas.rect(0, doc.pagesize[1]-2*cm, doc.pagesize[0], 2*cm, fill=1, stroke=0)
         canvas.setFillColor(colors.white)
         canvas.setFont('Arial-Bold', 12)
-        canvas.drawRightString(doc.pagesize[0]-1*cm, doc.pagesize[1]-1.3*cm, ar(sheet.name))
+        canvas.drawRightString(doc.pagesize[0]-1*cm, doc.pagesize[1]-1.3*cm, _ar(sheet.name))
         canvas.setFont('Arial', 8)
         from django.utils import timezone as tz
         now_str = tz.localtime().strftime('%Y/%m/%d %H:%M')
         canvas.drawString(1*cm, doc.pagesize[1]-1.3*cm, f'{now_str} | {username}')
         canvas.restoreState()
 
-    doc.build([t], onFirstPage=header_cb, onLaterPages=header_cb)
+    doc.build([_build_table(rows, col_widths=col_w)],
+              onFirstPage=header_cb, onLaterPages=header_cb)
 
     response = HttpResponse(buf.getvalue(), content_type='application/pdf')
     response['Content-Disposition'] = f'inline; filename="sheet_{pk}.pdf"'
