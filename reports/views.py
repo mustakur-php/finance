@@ -156,12 +156,11 @@ def report_commissions(request):
         'sales_users':      sales_users,
         'accountant_users': accountant_users,
         'review_users':     review_users,
+        'top_clients':      top_clients,
         'filters': {
             'date_from': date_from, 'date_to': date_to,
             'role': role_filter, 'user': user_filter,
         },
-        'top_clients': top_clients,
-        'filters': {'date_from': date_from, 'date_to': date_to},
     })
 
 
@@ -309,8 +308,22 @@ def export_clients_excel(request):
     import openpyxl
     from clients.models import Client
 
-    tenant = request.user.tenant
-    qs     = Client.objects.filter(tenant=tenant, is_active=True).select_related('assigned_sales','assigned_accountant','activity')
+    tenant      = request.user.tenant
+    date_from   = request.GET.get('date_from', '')
+    date_to     = request.GET.get('date_to', '')
+    city_filter  = request.GET.get('city', '')
+    sales_filter = request.GET.get('sales', '')
+    type_filter  = request.GET.get('type', 'actual')
+
+    qs = Client.objects.filter(tenant=tenant, is_active=True, client_type=type_filter).select_related('assigned_sales','assigned_accountant','activity')
+    if date_from:
+        qs = qs.filter(created_at__date__gte=date_from)
+    if date_to:
+        qs = qs.filter(created_at__date__lte=date_to)
+    if city_filter:
+        qs = qs.filter(city=city_filter)
+    if sales_filter:
+        qs = qs.filter(assigned_sales_id=sales_filter)
 
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -374,8 +387,21 @@ def export_events_excel(request):
     import openpyxl
     from calendar_app.models import Event
 
-    tenant = request.user.tenant
-    qs     = Event.objects.filter(tenant=tenant).select_related('assigned_to','client')
+    tenant        = request.user.tenant
+    date_from     = request.GET.get('date_from', '')
+    date_to       = request.GET.get('date_to', '')
+    user_filter   = request.GET.get('user', '')
+    source_filter = request.GET.get('source', '')
+
+    qs = Event.objects.filter(tenant=tenant).select_related('assigned_to','client')
+    if date_from:
+        qs = qs.filter(start_datetime__date__gte=date_from)
+    if date_to:
+        qs = qs.filter(start_datetime__date__lte=date_to)
+    if user_filter:
+        qs = qs.filter(assigned_to_id=user_filter)
+    if source_filter:
+        qs = qs.filter(source=source_filter)
 
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -467,15 +493,19 @@ def _register_arabic_font():
 
 
 def _ar(text):
-    """Reshape + bidi-reorder Arabic text — word by word to preserve spaces for line-wrapping."""
+    """Reshape + bidi Arabic text. Only reshape words that contain Arabic characters."""
     import arabic_reshaper
     from bidi.algorithm import get_display
+    import re
     if not text:
         return ''
     text = str(text)
     try:
-        words   = text.split(' ')
-        reshaped = ' '.join(arabic_reshaper.reshape(w) for w in words)
+        def _reshape_word(w):
+            if re.search(r'[؀-ۿ]', w):
+                return arabic_reshaper.reshape(w)
+            return w
+        reshaped = ' '.join(_reshape_word(w) for w in text.split(' '))
         return get_display(reshaped)
     except Exception:
         return text
@@ -552,8 +582,22 @@ def export_clients_pdf(request):
     from reportlab.lib.units import cm
     from clients.models import Client
 
-    tenant  = request.user.tenant
-    clients = Client.objects.filter(tenant=tenant, is_active=True).select_related('assigned_sales','assigned_accountant','activity')
+    tenant      = request.user.tenant
+    date_from   = request.GET.get('date_from', '')
+    date_to     = request.GET.get('date_to', '')
+    city_filter  = request.GET.get('city', '')
+    sales_filter = request.GET.get('sales', '')
+    type_filter  = request.GET.get('type', 'actual')
+
+    clients = Client.objects.filter(tenant=tenant, is_active=True, client_type=type_filter).select_related('assigned_sales','assigned_accountant','activity')
+    if date_from:
+        clients = clients.filter(created_at__date__gte=date_from)
+    if date_to:
+        clients = clients.filter(created_at__date__lte=date_to)
+    if city_filter:
+        clients = clients.filter(city=city_filter)
+    if sales_filter:
+        clients = clients.filter(assigned_sales_id=sales_filter)
 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=landscape(A4), rightMargin=1*cm, leftMargin=1*cm,
