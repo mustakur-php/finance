@@ -138,12 +138,12 @@ def report_commissions(request):
     )
 
     # by_sheet يعكس نفس الفلاتر المطبقة على entries
-    entry_ids = entries.values_list('id', flat=True)
+    entry_ids = list(entries.values_list('id', flat=True))
     by_sheet = sheets.filter(entries__id__in=entry_ids).annotate(
-        t_amount    = Sum('entries__amount',                    filter=Q(entries__id__in=entry_ids)),
-        t_sales     = Sum('entries__commission_amount',         filter=Q(entries__id__in=entry_ids)),
+        t_amount    = Sum('entries__amount',                       filter=Q(entries__id__in=entry_ids)),
+        t_sales     = Sum('entries__commission_amount',            filter=Q(entries__id__in=entry_ids)),
         t_accountant= Sum('entries__accountant_commission_amount', filter=Q(entries__id__in=entry_ids)),
-        t_review    = Sum('entries__review_commission_amount',  filter=Q(entries__id__in=entry_ids)),
+        t_review    = Sum('entries__review_commission_amount',     filter=Q(entries__id__in=entry_ids)),
     ).distinct().order_by('-created_at')
 
     top_clients = entries.values('client__name').annotate(
@@ -467,14 +467,15 @@ def _register_arabic_font():
 
 
 def _ar(text):
-    """Reshape + bidi-reorder Arabic text so reportlab renders it correctly."""
+    """Reshape + bidi-reorder Arabic text — word by word to preserve spaces for line-wrapping."""
     import arabic_reshaper
     from bidi.algorithm import get_display
     if not text:
         return ''
     text = str(text)
     try:
-        reshaped = arabic_reshaper.reshape(text)
+        words   = text.split(' ')
+        reshaped = ' '.join(arabic_reshaper.reshape(w) for w in words)
         return get_display(reshaped)
     except Exception:
         return text
@@ -514,8 +515,8 @@ def _build_table(data, col_widths=None):
     from reportlab.lib.enums import TA_RIGHT
     _register_arabic_font()
 
-    body_style = ParagraphStyle('ar_body', fontName='Arial',     fontSize=8,  alignment=TA_RIGHT, leading=11, wordWrap='CJK')
-    head_style = ParagraphStyle('ar_head', fontName='Arial-Bold', fontSize=8, alignment=TA_RIGHT, leading=11, wordWrap='CJK', textColor=colors.white)
+    body_style = ParagraphStyle('ar_body', fontName='Arial',      fontSize=8, alignment=TA_RIGHT, leading=12, spaceAfter=0, spaceBefore=0)
+    head_style = ParagraphStyle('ar_head', fontName='Arial-Bold', fontSize=8, alignment=TA_RIGHT, leading=12, spaceAfter=0, spaceBefore=0, textColor=colors.white)
 
     def _cell(text, is_header=False):
         style = head_style if is_header else body_style
@@ -614,7 +615,7 @@ def export_commissions_pdf(request):
                             topMargin=2.5*cm, bottomMargin=1.5*cm)
     # نفس by_sheet في الـ view
     from commissions.models import CommissionSheet
-    entry_ids = entries.values_list('id', flat=True)
+    entry_ids = list(entries.values_list('id', flat=True))
     by_sheet = CommissionSheet.objects.filter(tenant=tenant, entries__id__in=entry_ids).annotate(
         t_amount    = Sum('entries__amount',                       filter=Q(entries__id__in=entry_ids)),
         t_sales     = Sum('entries__commission_amount',            filter=Q(entries__id__in=entry_ids)),
