@@ -185,6 +185,7 @@ def stage_set_due(request, stage_pk):
 
 
 @login_required
+@admin_required
 def workflow_report(request):
     clients = ReviewClient.objects.filter(tenant=request.user.tenant).prefetch_related('stages')
     return render(request, 'workflow/report.html', {

@@ -282,20 +282,33 @@ def report_users(request):
     date_from, date_to = _date_filters(request)
 
     users = User.objects.filter(tenant=tenant, is_active=True)
-    data  = []
-    for u in users:
-        qs = Event.objects.filter(tenant=tenant, assigned_to=u)
-        if date_from:
-            qs = qs.filter(start_datetime__date__gte=date_from)
-        if date_to:
-            qs = qs.filter(start_datetime__date__lte=date_to)
-        data.append({
+
+    events_qs = Event.objects.filter(tenant=tenant)
+    if date_from:
+        events_qs = events_qs.filter(start_datetime__date__gte=date_from)
+    if date_to:
+        events_qs = events_qs.filter(start_datetime__date__lte=date_to)
+
+    stats = {
+        row['assigned_to']: row
+        for row in events_qs.values('assigned_to').annotate(
+            total=Count('id'),
+            done=Count('id', filter=Q(status='done')),
+            cancelled=Count('id', filter=Q(status='cancelled')),
+            pending=Count('id', filter=Q(status='pending')),
+        )
+    }
+
+    data = [
+        {
             'user':      u,
-            'total':     qs.count(),
-            'done':      qs.filter(status='done').count(),
-            'cancelled': qs.filter(status='cancelled').count(),
-            'pending':   qs.filter(status='pending').count(),
-        })
+            'total':     stats.get(u.pk, {}).get('total', 0),
+            'done':      stats.get(u.pk, {}).get('done', 0),
+            'cancelled': stats.get(u.pk, {}).get('cancelled', 0),
+            'pending':   stats.get(u.pk, {}).get('pending', 0),
+        }
+        for u in users
+    ]
 
     return render(request, 'reports/users.html', {
         'data': data,
@@ -385,8 +398,8 @@ def export_commissions_excel(request):
     for e in entries:
         ws.append([
             str(e.sheet), e.client.name if e.client else '',
-            float(e.amount), float(e.commission_amount),
-            float(e.accountant_commission_amount), float(e.review_commission_amount),
+            e.amount, e.commission_amount,
+            e.accountant_commission_amount, e.review_commission_amount,
         ])
     response = _make_excel_response('commissions.xlsx')
     wb.save(response)
@@ -560,17 +573,19 @@ def export_commissions_pdf(request):
     username = request.user.get_full_name() or request.user.username
 
     def _fmt(v):
-        return f"{v:g}" if v != int(v) else str(int(v))
+        return f"{v:,.2f}"
 
+    from decimal import Decimal
+    zero = Decimal(0)
     sheet_totals = OrderedDict()
     for e in entries:
         sid = e.sheet_id
         if sid not in sheet_totals:
-            sheet_totals[sid] = {'name': str(e.sheet), 'amount': 0, 'sales': 0, 'accountant': 0, 'review': 0}
-        sheet_totals[sid]['amount']     += float(e.amount or 0)
-        sheet_totals[sid]['sales']      += float(e.commission_amount or 0)
-        sheet_totals[sid]['accountant'] += float(e.accountant_commission_amount or 0)
-        sheet_totals[sid]['review']     += float(e.review_commission_amount or 0)
+            sheet_totals[sid] = {'name': str(e.sheet), 'amount': zero, 'sales': zero, 'accountant': zero, 'review': zero}
+        sheet_totals[sid]['amount']     += e.amount or zero
+        sheet_totals[sid]['sales']      += e.commission_amount or zero
+        sheet_totals[sid]['accountant'] += e.accountant_commission_amount or zero
+        sheet_totals[sid]['review']     += e.review_commission_amount or zero
 
     headers = ['الشيت', 'إجمالي المبالغ', 'عمولات المناديب', 'عمولات المحاسبين', 'عمولات المراجعين']
     rows = []

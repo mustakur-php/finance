@@ -342,17 +342,17 @@ def export_sheet_excel(request, pk):
         ws.column_dimensions[cell.column_letter].width = 18
 
     for entry in entries:
-        total = float(entry.commission_amount) + float(entry.accountant_commission_amount) + float(entry.review_commission_amount)
+        total = entry.commission_amount + entry.accountant_commission_amount + entry.review_commission_amount
         ws.append([
             entry.client.name,
             entry.client.company or '',
             entry.sales_rep.get_full_name() or entry.sales_rep.username,
             entry.client.assigned_accountant.get_full_name() if entry.client.assigned_accountant else '—',
             entry.client.assigned_review.get_full_name() if entry.client.assigned_review else '—',
-            float(entry.amount),
-            float(entry.commission_amount),
-            float(entry.accountant_commission_amount),
-            float(entry.review_commission_amount),
+            entry.amount,
+            entry.commission_amount,
+            entry.accountant_commission_amount,
+            entry.review_commission_amount,
             total,
             'نعم' if entry.is_confirmed else 'لا',
         ])
@@ -360,11 +360,11 @@ def export_sheet_excel(request, pk):
     # صف المجاميع
     last = ws.max_row
     total_row = ['الإجمالي', '', '', '', '',
-                 sum(float(e.amount) for e in entries),
-                 sum(float(e.commission_amount) for e in entries),
-                 sum(float(e.accountant_commission_amount) for e in entries),
-                 sum(float(e.review_commission_amount) for e in entries),
-                 sum(float(e.commission_amount) + float(e.accountant_commission_amount) + float(e.review_commission_amount) for e in entries),
+                 sum(e.amount for e in entries),
+                 sum(e.commission_amount for e in entries),
+                 sum(e.accountant_commission_amount for e in entries),
+                 sum(e.review_commission_amount for e in entries),
+                 sum(e.commission_amount + e.accountant_commission_amount + e.review_commission_amount for e in entries),
                  '']
     ws.append(total_row)
     for cell in ws[ws.max_row]:
@@ -390,25 +390,25 @@ def export_sheet_pdf(request, pk):
     headers = ['العميل', 'الشركة', 'المندوب', 'المحاسب', 'المراجع', 'المبلغ', 'ع.المندوب', 'ع.المحاسب', 'ع.المراجع', 'الإجمالي']
     rows = []
     for e in entries:
-        total = float(e.commission_amount) + float(e.accountant_commission_amount) + float(e.review_commission_amount)
+        total = e.commission_amount + e.accountant_commission_amount + e.review_commission_amount
         rows.append([
             e.client.name,
             e.client.company or '',
             e.sales_rep.get_full_name() or e.sales_rep.username,
             e.client.assigned_accountant.get_full_name() if e.client.assigned_accountant else '—',
             e.client.assigned_review.get_full_name() if e.client.assigned_review else '—',
-            f"{float(e.amount):,.2f}",
-            f"{float(e.commission_amount):,.2f}",
-            f"{float(e.accountant_commission_amount):,.2f}",
-            f"{float(e.review_commission_amount):,.2f}",
+            f"{e.amount:,.2f}",
+            f"{e.commission_amount:,.2f}",
+            f"{e.accountant_commission_amount:,.2f}",
+            f"{e.review_commission_amount:,.2f}",
             f"{total:,.2f}",
         ])
     rows.append([
         'الإجمالي', '', '', '', '',
-        f"{sum(float(e.amount) for e in entries):,.2f}",
-        f"{sum(float(e.commission_amount) for e in entries):,.2f}",
-        f"{sum(float(e.accountant_commission_amount) for e in entries):,.2f}",
-        f"{sum(float(e.review_commission_amount) for e in entries):,.2f}",
-        f"{sum(float(e.commission_amount)+float(e.accountant_commission_amount)+float(e.review_commission_amount) for e in entries):,.2f}",
+        f"{sum(e.amount for e in entries):,.2f}",
+        f"{sum(e.commission_amount for e in entries):,.2f}",
+        f"{sum(e.accountant_commission_amount for e in entries):,.2f}",
+        f"{sum(e.review_commission_amount for e in entries):,.2f}",
+        f"{sum(e.commission_amount + e.accountant_commission_amount + e.review_commission_amount for e in entries):,.2f}",
     ])
     return _render_pdf(sheet.name, headers, rows, f'sheet_{pk}.pdf', username, has_totals=True)
