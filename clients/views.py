@@ -179,6 +179,9 @@ def import_targeted_clients(request):
     import openpyxl
     if request.method == 'POST' and request.FILES.get('excel_file'):
         f = request.FILES['excel_file']
+        if f.size > 5 * 1024 * 1024:
+            messages.error(request, 'حجم الملف يتجاوز الحد المسموح (5 MB)')
+            return redirect('targeted_list')
         try:
             wb = openpyxl.load_workbook(f)
             ws = wb.active
@@ -369,9 +372,11 @@ def commission_rule_save(request, client_pk):
         for entry in qs:
             entry.save()
         messages.success(request, 'تم حفظ قاعدة العمولة')
-    next_url = request.POST.get('next') or request.META.get('HTTP_REFERER') or 'clients_list'
-    from django.shortcuts import redirect as _redirect
-    return _redirect(next_url)
+    from django.utils.http import url_has_allowed_host_and_scheme
+    next_url = request.POST.get('next') or request.META.get('HTTP_REFERER', '')
+    if not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
+        next_url = 'clients_list'
+    return redirect(next_url)
 
 
 @login_required

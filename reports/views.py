@@ -1,9 +1,8 @@
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum, Count, Q, Avg
+from django.db.models import Sum, Count, Q
 from django.utils import timezone
 from accounts.decorators import admin_required
-import datetime
 
 
 def _date_filters(request):
@@ -475,81 +474,6 @@ def export_workflow_excel(request):
     return response
 
 
-# ═══════════════════════════════════════════
-# تصدير PDF باستخدام reportlab + دعم عربي
-# ═══════════════════════════════════════════
-def _find_arabic_font():
-    """Return (regular, bold) font paths — works on Windows and Linux."""
-    import platform, os
-    if platform.system() == 'Windows':
-        return (r'C:\Windows\Fonts\arial.ttf', r'C:\Windows\Fonts\arialbd.ttf')
-    # Linux / VPS — common Arabic-capable font locations
-    candidates = [
-        ('/usr/share/fonts/truetype/freefont/FreeSerif.ttf', '/usr/share/fonts/truetype/freefont/FreeSerifBold.ttf'),
-        ('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'),
-        ('/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf', '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf'),
-    ]
-    for reg, bold in candidates:
-        if os.path.exists(reg):
-            return (reg, bold)
-    raise FileNotFoundError('لم يتم العثور على خط عربي. ثبّت fonts-freefont-ttf أو fonts-dejavu')
-
-
-def _register_arabic_font():
-    """Register Arial/fallback as an Arabic-capable font (done once)."""
-    from reportlab.pdfbase import pdfmetrics
-    from reportlab.pdfbase.ttfonts import TTFont
-    if 'Arial' not in pdfmetrics.getRegisteredFontNames():
-        reg, bold = _find_arabic_font()
-        pdfmetrics.registerFont(TTFont('Arial', reg))
-        pdfmetrics.registerFont(TTFont('Arial-Bold', bold))
-
-
-def _ar(text):
-    """Reshape + bidi for single-line use (drawRightString headers). Reverses full word order."""
-    import arabic_reshaper
-    from bidi.algorithm import get_display
-    import re
-    if not text:
-        return ''
-    text = str(text)
-    try:
-        def _reshape_word(w):
-            if re.search(r'[؀-ۿ]', w):
-                return arabic_reshaper.reshape(w)
-            return w
-        reshaped = ' '.join(_reshape_word(w) for w in text.split(' '))
-        return get_display(reshaped)
-    except Exception:
-        return text
-
-
-def _ar_wrap(text):
-    """Reshape for Paragraph cells that may wrap. Applies get_display per word so
-    word order stays logical — reportlab wraps correctly across lines."""
-    import arabic_reshaper
-    from bidi.algorithm import get_display
-    import re
-    if not text:
-        return ''
-    text = str(text)
-    try:
-        def _ar_word(w):
-            if re.search(r'[؀-ۿ]', w):
-                return get_display(arabic_reshaper.reshape(w))
-            return w
-        return ' '.join(_ar_word(w) for w in text.split(' '))
-    except Exception:
-        return text
-
-
-def _pdf_response(filename):
-    from django.http import HttpResponse
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = f'inline; filename="{filename}"'
-    return response
-
-
 def _render_pdf(title, headers, rows, filename, username, has_totals=False):
     """Render a PDF using WeasyPrint from pdf_table.html template."""
     import weasyprint
@@ -581,60 +505,6 @@ def _render_pdf(title, headers, rows, filename, username, has_totals=False):
     response = HttpResponse(pdf, content_type='application/pdf')
     response['Content-Disposition'] = f'inline; filename="{filename}"'
     return response
-
-
-def _pdf_header(canvas, doc, title, username):
-    from reportlab.lib.units import cm
-    from reportlab.lib import colors
-    _register_arabic_font()
-    canvas.saveState()
-    canvas.setFillColor(colors.HexColor('#1a3a5c'))
-    canvas.rect(0, doc.pagesize[1] - 2*cm, doc.pagesize[0], 2*cm, fill=1, stroke=0)
-    canvas.setFillColor(colors.white)
-    canvas.setFont('Arial-Bold', 13)
-    canvas.drawRightString(doc.pagesize[0] - 1*cm, doc.pagesize[1] - 1.3*cm, _ar(title))
-    canvas.setFont('Arial', 8)
-    from django.utils import timezone
-    now_str = timezone.localtime().strftime('%Y/%m/%d %H:%M')
-    canvas.drawString(1*cm, doc.pagesize[1] - 1.3*cm, f'{now_str} | {_ar(username)}')
-    canvas.setFillColor(colors.HexColor('#666666'))
-    canvas.setFont('Arial', 8)
-    canvas.drawCentredString(doc.pagesize[0]/2, 0.5*cm, _ar('نظام إدارة العملاء'))
-    canvas.restoreState()
-
-
-def _build_table(data, col_widths=None):
-    from reportlab.platypus import Table, TableStyle, Paragraph
-    from reportlab.lib import colors
-    from reportlab.lib.styles import ParagraphStyle
-    from reportlab.lib.enums import TA_RIGHT
-    _register_arabic_font()
-
-    body_style = ParagraphStyle('ar_body', fontName='Arial',      fontSize=8, alignment=TA_RIGHT, leading=12, spaceAfter=0, spaceBefore=0)
-    head_style = ParagraphStyle('ar_head', fontName='Arial-Bold', fontSize=8, alignment=TA_RIGHT, leading=12, spaceAfter=0, spaceBefore=0, textColor=colors.white)
-
-    def _cell(text, is_header=False):
-        style = head_style if is_header else body_style
-        return Paragraph(_ar_wrap(str(text)) if text else '', style)
-
-    ar_data = []
-    for i, row in enumerate(data):
-        ar_data.append([_cell(cell, is_header=(i == 0)) for cell in reversed(row)])
-
-    rtl_widths = list(reversed(col_widths)) if col_widths else None
-    t = Table(ar_data, colWidths=rtl_widths, repeatRows=1)
-    t.setStyle(TableStyle([
-        ('BACKGROUND',     (0,0), (-1,0),  colors.HexColor('#1a3a5c')),
-        ('ALIGN',          (0,0), (-1,-1), 'RIGHT'),
-        ('VALIGN',         (0,0), (-1,-1), 'MIDDLE'),
-        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#f5f7fa')]),
-        ('GRID',           (0,0), (-1,-1), 0.3, colors.HexColor('#dddddd')),
-        ('TOPPADDING',     (0,0), (-1,-1), 5),
-        ('BOTTOMPADDING',  (0,0), (-1,-1), 5),
-        ('LEFTPADDING',    (0,0), (-1,-1), 4),
-        ('RIGHTPADDING',   (0,0), (-1,-1), 4),
-    ]))
-    return t
 
 
 @login_required

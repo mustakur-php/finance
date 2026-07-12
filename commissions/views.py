@@ -30,31 +30,32 @@ def commissions_list(request):
 def commission_create(request):
     form = CommissionSheetForm(request.POST or None)
     if request.method == 'POST' and form.is_valid():
-        sheet = form.save(commit=False)
-        sheet.tenant = request.user.tenant
-        sheet.created_by = request.user
-        sheet.save()
-
-        # تعبئة تلقائية بجميع العملاء الخاضعين للعمولة (فعليين أو مستهدفين)
-        actual_clients = Client.objects.filter(
-            tenant=request.user.tenant,
-            is_commissionable=True,
-            is_active=True,
-        ).select_related('assigned_sales')
-
-        entries = []
-        for client in actual_clients:
-            entries.append(CommissionEntry(
-                sheet=sheet,
-                client=client,
-                sales_rep=client.assigned_sales or request.user,
-                amount=0,
-            ))
-        if entries:
-            CommissionEntry.objects.bulk_create(entries)
-
+        from django.db import transaction
         from audit_log.utils import log_action
         from audit_log.models import AuditLog
+        with transaction.atomic():
+            sheet = form.save(commit=False)
+            sheet.tenant = request.user.tenant
+            sheet.created_by = request.user
+            sheet.save()
+
+            actual_clients = Client.objects.filter(
+                tenant=request.user.tenant,
+                is_commissionable=True,
+                is_active=True,
+            ).select_related('assigned_sales')
+
+            entries = []
+            for client in actual_clients:
+                entries.append(CommissionEntry(
+                    sheet=sheet,
+                    client=client,
+                    sales_rep=client.assigned_sales or request.user,
+                    amount=0,
+                ))
+            if entries:
+                CommissionEntry.objects.bulk_create(entries)
+
         log_action(request, AuditLog.ACTION_CREATE, obj=sheet,
                    changes={'entries_count': {'إلى': str(len(entries))}})
         messages.success(request, f'تم إنشاء الشيت وتعبئته بـ {len(entries)} عميل فعلي')
@@ -143,9 +144,17 @@ def commission_save_entries(request, pk):
 @login_required
 @admin_required
 def commission_toggle(request, pk):
+    from django.db import transaction
+    from django.db.models import Case, When, Value, BooleanField
     entry = get_object_or_404(CommissionEntry, pk=pk, sheet__tenant=request.user.tenant)
-    entry.is_confirmed = not entry.is_confirmed
-    entry.save()
+    with transaction.atomic():
+        CommissionEntry.objects.filter(pk=pk).update(
+            is_confirmed=Case(
+                When(is_confirmed=True, then=Value(False)),
+                default=Value(True),
+                output_field=BooleanField(),
+            )
+        )
     return redirect('commission_detail', pk=entry.sheet.pk)
 
 

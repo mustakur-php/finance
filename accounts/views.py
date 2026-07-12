@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -27,6 +27,8 @@ def login_view(request):
 
 
 def logout_view(request):
+    if request.method != 'POST':
+        return redirect('login')
     if request.user.is_authenticated:
         from audit_log.utils import log_action
         from audit_log.models import AuditLog
@@ -126,7 +128,7 @@ def user_create(request):
 @login_required
 @admin_required
 def user_edit(request, pk):
-    user = User.objects.get(pk=pk, tenant=request.user.tenant)
+    user = get_object_or_404(User, pk=pk, tenant=request.user.tenant)
     form = UserForm(request.POST or None, instance=user, tenant=request.user.tenant)
     if request.method == 'POST' and form.is_valid():
         user = form.save(commit=False)
@@ -193,7 +195,7 @@ def whatsapp_setup(request):
 def user_toggle(request, pk):
     if request.method != 'POST':
         return redirect('users_list')
-    user = User.objects.get(pk=pk, tenant=request.user.tenant)
+    user = get_object_or_404(User, pk=pk, tenant=request.user.tenant)
     user.is_active = not user.is_active
     user.save()
     status = 'تفعيل' if user.is_active else 'تعطيل'
