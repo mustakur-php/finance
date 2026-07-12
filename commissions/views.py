@@ -49,7 +49,7 @@ def commission_create(request):
             review_clients = ReviewClient.objects.filter(
                 tenant=request.user.tenant,
                 is_commissionable=True,
-            )
+            ).select_related('assigned_reviewer')
 
             entries = []
             for client in actual_clients:
@@ -63,7 +63,7 @@ def commission_create(request):
                 entries.append(CommissionEntry(
                     sheet=sheet,
                     review_client=rc,
-                    sales_rep=request.user,
+                    sales_rep=rc.assigned_reviewer or request.user,
                     amount=0,
                 ))
             if entries:
@@ -204,13 +204,13 @@ def commission_refresh_sheet(request, pk):
     new_review_clients = ReviewClient.objects.filter(
         tenant=request.user.tenant,
         is_commissionable=True,
-    ).exclude(id__in=existing_review_ids)
+    ).exclude(id__in=existing_review_ids).select_related('assigned_reviewer')
 
     entries = [
         CommissionEntry(sheet=sheet, client=c, sales_rep=c.assigned_sales or request.user, amount=0)
         for c in new_clients
     ] + [
-        CommissionEntry(sheet=sheet, review_client=rc, sales_rep=request.user, amount=0)
+        CommissionEntry(sheet=sheet, review_client=rc, sales_rep=rc.assigned_reviewer or request.user, amount=0)
         for rc in new_review_clients
     ]
     if entries:
