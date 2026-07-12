@@ -387,7 +387,7 @@ def export_sheet_pdf(request, pk):
     username = request.user.get_full_name() or request.user.username
 
     # landscape A4 usable width ≈ 27.7 cm
-    col_w = [3.2*cm, 2.8*cm, 3*cm, 3*cm, 3*cm, 2.5*cm, 2.5*cm, 2.5*cm, 2.5*cm, 2.7*cm]
+    col_w = [5*cm, 4.5*cm, 3*cm, 3*cm, 3*cm, 2*cm, 2*cm, 2*cm, 2*cm, 1.2*cm]
 
     rows = [['العميل','الشركة','المندوب','المحاسب','المراجع','المبلغ','ع.المندوب','ع.المحاسب','ع.المراجع','الإجمالي']]
     for e in entries:
