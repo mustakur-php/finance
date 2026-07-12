@@ -372,24 +372,14 @@ def export_sheet_excel(request, pk):
 @login_required
 @admin_required
 def export_sheet_pdf(request, pk):
-    import io
-    from reportlab.lib.pagesizes import A4, landscape
-    from reportlab.lib.units import cm
-    from reportlab.lib import colors
-    from reportlab.platypus import SimpleDocTemplate
-    from django.http import HttpResponse
-    from reports.views import _ar, _register_arabic_font, _build_table
+    from reports.views import _render_pdf
 
-    _register_arabic_font()
-
-    sheet   = get_object_or_404(CommissionSheet, pk=pk, tenant=request.user.tenant)
-    entries = list(_apply_sheet_filters(_get_sheet_entries(sheet), request))
+    sheet    = get_object_or_404(CommissionSheet, pk=pk, tenant=request.user.tenant)
+    entries  = list(_apply_sheet_filters(_get_sheet_entries(sheet), request))
     username = request.user.get_full_name() or request.user.username
 
-    # landscape A4 usable width ≈ 27.7 cm
-    col_w = [5*cm, 4.5*cm, 3*cm, 3*cm, 3*cm, 2*cm, 2*cm, 2*cm, 2*cm, 1.2*cm]
-
-    rows = [['العميل','الشركة','المندوب','المحاسب','المراجع','المبلغ','ع.المندوب','ع.المحاسب','ع.المراجع','الإجمالي']]
+    headers = ['العميل', 'الشركة', 'المندوب', 'المحاسب', 'المراجع', 'المبلغ', 'ع.المندوب', 'ع.المحاسب', 'ع.المراجع', 'الإجمالي']
+    rows = []
     for e in entries:
         total = float(e.commission_amount) + float(e.accountant_commission_amount) + float(e.review_commission_amount)
         rows.append([
@@ -404,7 +394,6 @@ def export_sheet_pdf(request, pk):
             f"{float(e.review_commission_amount):,.2f}",
             f"{total:,.2f}",
         ])
-    # صف الإجمالي
     rows.append([
         'الإجمالي', '', '', '', '',
         f"{sum(float(e.amount) for e in entries):,.2f}",
@@ -413,28 +402,4 @@ def export_sheet_pdf(request, pk):
         f"{sum(float(e.review_commission_amount) for e in entries):,.2f}",
         f"{sum(float(e.commission_amount)+float(e.accountant_commission_amount)+float(e.review_commission_amount) for e in entries):,.2f}",
     ])
-
-    buf = io.BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=landscape(A4),
-                            rightMargin=1*cm, leftMargin=1*cm,
-                            topMargin=2.5*cm, bottomMargin=1.5*cm)
-
-    def header_cb(canvas, doc):
-        canvas.saveState()
-        canvas.setFillColor(colors.HexColor('#1A3A5C'))
-        canvas.rect(0, doc.pagesize[1]-2*cm, doc.pagesize[0], 2*cm, fill=1, stroke=0)
-        canvas.setFillColor(colors.white)
-        canvas.setFont('Arial-Bold', 12)
-        canvas.drawRightString(doc.pagesize[0]-1*cm, doc.pagesize[1]-1.3*cm, _ar(sheet.name))
-        canvas.setFont('Arial', 8)
-        from django.utils import timezone as tz
-        now_str = tz.localtime().strftime('%Y/%m/%d %H:%M')
-        canvas.drawString(1*cm, doc.pagesize[1]-1.3*cm, f'{now_str} | {_ar(username)}')
-        canvas.restoreState()
-
-    doc.build([_build_table(rows, col_widths=col_w)],
-              onFirstPage=header_cb, onLaterPages=header_cb)
-
-    response = HttpResponse(buf.getvalue(), content_type='application/pdf')
-    response['Content-Disposition'] = f'inline; filename="sheet_{pk}.pdf"'
-    return response
+    return _render_pdf(sheet.name, headers, rows, f'sheet_{pk}.pdf', username, has_totals=True)

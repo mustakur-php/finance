@@ -12,6 +12,7 @@ openpyxl==3.1.5
 reportlab==4.4.10
 arabic-reshaper==3.0.0
 python-bidi==0.6.7
+weasyprint==65.1
 pillow==12.1.1
 python-dateutil==2.9.0.post0
 pytz==2026.1.post1

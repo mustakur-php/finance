@@ -550,6 +550,39 @@ def _pdf_response(filename):
     return response
 
 
+def _render_pdf(title, headers, rows, filename, username, has_totals=False):
+    """Render a PDF using WeasyPrint from pdf_table.html template."""
+    import weasyprint
+    from django.template.loader import render_to_string
+    from django.http import HttpResponse
+    from django.utils import timezone
+
+    def _is_num(val):
+        try:
+            float(str(val).replace(',', ''))
+            return str(val) not in ('', '—')
+        except (ValueError, TypeError):
+            return False
+
+    now_str = timezone.localtime().strftime('%Y/%m/%d %H:%M')
+    table_rows = [
+        [{'value': cell, 'is_num': _is_num(cell)} for cell in row]
+        for row in rows
+    ]
+    html = render_to_string('pdf_table.html', {
+        'title': title,
+        'headers': headers,
+        'rows': table_rows,
+        'username': username,
+        'now': now_str,
+        'has_totals': has_totals,
+    })
+    pdf = weasyprint.HTML(string=html, base_url='/').write_pdf()
+    response = HttpResponse(pdf, content_type='application/pdf')
+    response['Content-Disposition'] = f'inline; filename="{filename}"'
+    return response
+
+
 def _pdf_header(canvas, doc, title, username):
     from reportlab.lib.units import cm
     from reportlab.lib import colors
@@ -607,21 +640,16 @@ def _build_table(data, col_widths=None):
 @login_required
 @admin_required
 def export_clients_pdf(request):
-    import io
-    from reportlab.platypus import SimpleDocTemplate, Spacer, Paragraph
-    from reportlab.lib.styles import getSampleStyleSheet
-    from reportlab.lib.pagesizes import A4, landscape
-    from reportlab.lib.units import cm
     from clients.models import Client
 
-    tenant      = request.user.tenant
-    date_from   = request.GET.get('date_from', '')
-    date_to     = request.GET.get('date_to', '')
+    tenant       = request.user.tenant
+    date_from    = request.GET.get('date_from', '')
+    date_to      = request.GET.get('date_to', '')
     city_filter  = request.GET.get('city', '')
     sales_filter = request.GET.get('sales', '')
     type_filter  = request.GET.get('type', 'actual')
 
-    clients = Client.objects.filter(tenant=tenant, is_active=True, client_type=type_filter).select_related('assigned_sales','assigned_accountant','activity')
+    clients = Client.objects.filter(tenant=tenant, is_active=True, client_type=type_filter).select_related('assigned_sales', 'assigned_accountant', 'activity')
     if date_from:
         clients = clients.filter(created_at__date__gte=date_from)
     if date_to:
@@ -631,14 +659,9 @@ def export_clients_pdf(request):
     if sales_filter:
         clients = clients.filter(assigned_sales_id=sales_filter)
 
-    buf = io.BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=landscape(A4), rightMargin=1*cm, leftMargin=1*cm,
-                            topMargin=2.5*cm, bottomMargin=1.5*cm)
     username = request.user.get_full_name() or request.user.username
-
-    # landscape A4 usable width = 29.7 - 2 margins = 27.7 cm
-    col_w = [3.5*cm, 3.5*cm, 3*cm, 3.2*cm, 4*cm, 4*cm, 3.5*cm, 3*cm]  # total 27.7
-    rows = [['الاسم','الشركة','المدينة','الجوال','المندوب','المحاسب','النشاط','تاريخ الإضافة']]
+    headers = ['الاسم', 'الشركة', 'المدينة', 'الجوال', 'المندوب', 'المحاسب', 'النشاط', 'تاريخ الإضافة']
+    rows = []
     for c in clients:
         rows.append([
             c.name or '', c.company or '', c.city or '', c.phone or '',
@@ -647,24 +670,14 @@ def export_clients_pdf(request):
             c.activity.name if c.activity else '—',
             str(c.created_at.date()) if c.created_at else '',
         ])
-
-    story = [_build_table(rows, col_widths=col_w)]
-    doc.build(story, onFirstPage=lambda c,d: _pdf_header(c,d,'تقرير العملاء', username),
-                     onLaterPages=lambda c,d: _pdf_header(c,d,'تقرير العملاء', username))
-    response = _pdf_response('clients.pdf')
-    response.write(buf.getvalue())
-    return response
+    return _render_pdf('تقرير العملاء', headers, rows, 'clients.pdf', username)
 
 
 @login_required
 @admin_required
 def export_commissions_pdf(request):
-    import io
-    from reportlab.platypus import SimpleDocTemplate
-    from reportlab.lib.pagesizes import A4, landscape
-    from reportlab.lib.units import cm
-    from django.db.models import Sum, Q
     from commissions.models import CommissionEntry
+    from collections import OrderedDict
 
     tenant      = request.user.tenant
     date_from   = request.GET.get('date_from', '')
@@ -672,14 +685,13 @@ def export_commissions_pdf(request):
     role_filter = request.GET.get('role', '')
     user_filter = request.GET.get('user', '')
 
-    from commissions.models import CommissionEntry
     entries = CommissionEntry.objects.filter(sheet__tenant=tenant).select_related('sheet')
     entries = _apply_commission_filters(entries, date_from, date_to, role_filter, user_filter)
-
     username = request.user.get_full_name() or request.user.username
 
-    # نجمّع المبالغ حسب الشيت في Python مباشرةً — أضمن من ORM aggregation
-    from collections import OrderedDict
+    def _fmt(v):
+        return f"{v:g}" if v != int(v) else str(int(v))
+
     sheet_totals = OrderedDict()
     for e in entries:
         sid = e.sheet_id
@@ -690,48 +702,25 @@ def export_commissions_pdf(request):
         sheet_totals[sid]['accountant'] += float(e.accountant_commission_amount or 0)
         sheet_totals[sid]['review']     += float(e.review_commission_amount or 0)
 
-    buf = io.BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=landscape(A4), rightMargin=1*cm, leftMargin=1*cm,
-                            topMargin=2.5*cm, bottomMargin=1.5*cm)
-
-    def _fmt(v):
-        return f"{v:g}" if v != int(v) else str(int(v))
-
-    col_w = [7.7*cm, 5*cm, 5*cm, 5*cm, 5*cm]  # total 27.7
-    rows = [['الشيت','إجمالي المبالغ','عمولات المناديب','عمولات المحاسبين','عمولات المراجعين']]
+    headers = ['الشيت', 'إجمالي المبالغ', 'عمولات المناديب', 'عمولات المحاسبين', 'عمولات المراجعين']
+    rows = []
     for data in sheet_totals.values():
-        rows.append([
-            data['name'],
-            _fmt(data['amount']),
-            _fmt(data['sales']),
-            _fmt(data['accountant']),
-            _fmt(data['review']),
-        ])
-
-    story = [_build_table(rows, col_widths=col_w)]
-    doc.build(story, onFirstPage=lambda c,d: _pdf_header(c,d,'تقرير العمولات', username),
-                     onLaterPages=lambda c,d: _pdf_header(c,d,'تقرير العمولات', username))
-    response = _pdf_response('commissions.pdf')
-    response.write(buf.getvalue())
-    return response
+        rows.append([data['name'], _fmt(data['amount']), _fmt(data['sales']), _fmt(data['accountant']), _fmt(data['review'])])
+    return _render_pdf('تقرير العمولات', headers, rows, 'commissions.pdf', username)
 
 
 @login_required
 @admin_required
 def export_events_pdf(request):
-    import io
-    from reportlab.platypus import SimpleDocTemplate
-    from reportlab.lib.pagesizes import A4, landscape
-    from reportlab.lib.units import cm
     from calendar_app.models import Event
 
-    tenant      = request.user.tenant
-    date_from   = request.GET.get('date_from', '')
-    date_to     = request.GET.get('date_to', '')
-    user_filter = request.GET.get('user', '')
+    tenant        = request.user.tenant
+    date_from     = request.GET.get('date_from', '')
+    date_to       = request.GET.get('date_to', '')
+    user_filter   = request.GET.get('user', '')
     source_filter = request.GET.get('source', '')
 
-    events = Event.objects.filter(tenant=tenant).select_related('assigned_to','client').order_by('-start_datetime')
+    events = Event.objects.filter(tenant=tenant).select_related('assigned_to', 'client').order_by('-start_datetime')
     if date_from:
         events = events.filter(start_datetime__date__gte=date_from)
     if date_to:
@@ -742,38 +731,23 @@ def export_events_pdf(request):
         events = events.filter(source=source_filter)
     username = request.user.get_full_name() or request.user.username
 
-    buf = io.BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=landscape(A4), rightMargin=1*cm, leftMargin=1*cm,
-                            topMargin=2.5*cm, bottomMargin=1.5*cm)
-    col_w = [5*cm, 3*cm, 3*cm, 4*cm, 4*cm, 3*cm, 5.7*cm]  # total 27.7
-    rows = [['العنوان','النوع','الحالة','العميل','المسند إلى','التاريخ','ملاحظات']]
+    headers = ['العنوان', 'النوع', 'الحالة', 'العميل', 'المسند إلى', 'التاريخ', 'ملاحظات']
+    rows = []
     for e in events:
         rows.append([
             e.title, e.get_event_type_display(), e.get_status_display(),
             e.client.name if e.client else '—',
             e.assigned_to.get_full_name() if e.assigned_to else '—',
             str(e.start_datetime.date()),
-            (e.notes or '')[:50],
+            (e.notes or '')[:60],
         ])
-
-    story = [_build_table(rows, col_widths=col_w)]
-    doc.build(story, onFirstPage=lambda c,d: _pdf_header(c,d,'تقرير الأحداث', username),
-                     onLaterPages=lambda c,d: _pdf_header(c,d,'تقرير الأحداث', username))
-    response = _pdf_response('events.pdf')
-    response.write(buf.getvalue())
-    return response
+    return _render_pdf('تقرير الأحداث', headers, rows, 'events.pdf', username)
 
 
 @login_required
 @admin_required
 def export_workflow_pdf(request):
-    import io
-    from reportlab.platypus import SimpleDocTemplate
-    from reportlab.lib.pagesizes import A4, landscape
-    from reportlab.lib.units import cm
-    from workflow.models import ReviewClient
-
-    from workflow.models import WorkflowStage
+    from workflow.models import ReviewClient, WorkflowStage
 
     tenant        = request.user.tenant
     stage_filter  = request.GET.get('stage', '')
@@ -790,12 +764,8 @@ def export_workflow_pdf(request):
         clients = clients.filter(pk__in=client_ids)
 
     username = request.user.get_full_name() or request.user.username
-
-    buf = io.BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=landscape(A4), rightMargin=1*cm, leftMargin=1*cm,
-                            topMargin=2.5*cm, bottomMargin=1.5*cm)
-    col_w = [4*cm, 4*cm, 3.7*cm, 3.5*cm, 3*cm, 3*cm, 3*cm, 3.5*cm]  # total 27.7
-    rows = [['العميل','الشركة','المرحلة','الحالة','بداية','نهاية','استحقاق','المدة (يوم)']]
+    headers = ['العميل', 'الشركة', 'المرحلة', 'الحالة', 'بداية', 'نهاية', 'استحقاق', 'المدة (يوم)']
+    rows = []
     for client in clients:
         for stage in client.stages.all():
             rows.append([
@@ -806,10 +776,4 @@ def export_workflow_pdf(request):
                 str(stage.due_date)   if stage.due_date   else '—',
                 str(stage.days_in_stage) if stage.days_in_stage is not None else '—',
             ])
-
-    story = [_build_table(rows, col_widths=col_w)]
-    doc.build(story, onFirstPage=lambda c,d: _pdf_header(c,d,'تقرير المراجعة', username),
-                     onLaterPages=lambda c,d: _pdf_header(c,d,'تقرير المراجعة', username))
-    response = _pdf_response('workflow.pdf')
-    response.write(buf.getvalue())
-    return response
+    return _render_pdf('تقرير المراجعة', headers, rows, 'workflow.pdf', username)

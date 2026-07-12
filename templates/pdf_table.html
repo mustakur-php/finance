@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Cairo', 'Arial', sans-serif;
+    font-size: 11px;
+    direction: rtl;
+    color: #1a1a1a;
+    background: #fff;
+  }
+
+  .header {
+    background: #1A3A5C;
+    color: #fff;
+    padding: 10px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  .header-title {
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .header-meta {
+    font-size: 10px;
+    opacity: 0.85;
+    text-align: left;
+    direction: ltr;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: auto;
+  }
+
+  thead th {
+    background: #1A3A5C;
+    color: #fff;
+    padding: 7px 8px;
+    text-align: right;
+    font-weight: 600;
+    font-size: 10.5px;
+    border: 1px solid #14304f;
+    white-space: nowrap;
+  }
+
+  tbody td {
+    padding: 6px 8px;
+    text-align: right;
+    border: 1px solid #dde3ea;
+    vertical-align: top;
+    line-height: 1.5;
+  }
+
+  tbody tr:nth-child(even) { background: #f4f7fb; }
+  tbody tr:hover { background: #e8eef7; }
+
+  .totals-row td {
+    background: #1A3A5C !important;
+    color: #fff;
+    font-weight: 700;
+    border: 1px solid #14304f;
+  }
+
+  .num { text-align: left; direction: ltr; font-variant-numeric: tabular-nums; }
+
+  @page {
+    size: A4 landscape;
+    margin: 1cm 1.2cm 1.5cm 1.2cm;
+  }
+
+  @media print {
+    thead { display: table-header-group; }
+    tbody tr { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span class="header-title">{{ title }}</span>
+  <span class="header-meta">{{ now }} | {{ username }}</span>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      {% for col in headers %}
+      <th>{{ col }}</th>
+      {% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in rows %}
+    <tr {% if forloop.last and has_totals %}class="totals-row"{% endif %}>
+      {% for cell in row %}
+      <td class="{% if cell.is_num %}num{% endif %}">{{ cell.value }}</td>
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+</body>
+</html>
