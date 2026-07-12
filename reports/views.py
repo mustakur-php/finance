@@ -538,8 +538,7 @@ def _ar_wrap(text):
             if re.search(r'[؀-ۿ]', w):
                 return get_display(arabic_reshaper.reshape(w))
             return w
-        words = [_ar_word(w) for w in text.split(' ')]
-        return ' '.join(reversed(words))
+        return ' '.join(_ar_word(w) for w in text.split(' '))
     except Exception:
         return text
 
