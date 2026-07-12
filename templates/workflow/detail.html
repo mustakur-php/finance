@@ -7,6 +7,15 @@
     <a href="{% url 'workflow_list' %}" class="btn btn-outline-secondary btn-sm">
         <i class="bi bi-arrow-right me-1"></i> رجوع
     </a>
+    {% if user.is_admin %}
+    <form method="post" action="{% url 'workflow_toggle_commissionable' client.pk %}" style="margin:0;">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm {% if client.is_commissionable %}btn-success{% else %}btn-outline-secondary{% endif %}">
+            <i class="bi bi-cash-stack me-1"></i>
+            {% if client.is_commissionable %}خاضع للعمولة{% else %}غير خاضع للعمولة{% endif %}
+        </button>
+    </form>
+    {% endif %}
     <div class="text-muted small">
         {% if client.start_date %}بداية المعاملة: <strong>{{ client.start_date }}</strong>{% endif %}
         {% if client.total_days is not None %} | إجمالي: <strong>{{ client.total_days }} يوم</strong>{% endif %}

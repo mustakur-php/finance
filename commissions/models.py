@@ -23,7 +23,8 @@ class CommissionSheet(models.Model):
 
 class CommissionEntry(models.Model):
     sheet = models.ForeignKey(CommissionSheet, on_delete=models.CASCADE, related_name='entries')
-    client = models.ForeignKey('clients.Client', on_delete=models.CASCADE, verbose_name='العميل')
+    client = models.ForeignKey('clients.Client', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='العميل')
+    review_client = models.ForeignKey('workflow.ReviewClient', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='عميل المراجعة')
     sales_rep = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
                                    related_name='commission_entries', verbose_name='المندوب')
     is_confirmed = models.BooleanField(default=False, verbose_name='تم التأكيد ✓')
@@ -54,7 +55,28 @@ class CommissionEntry(models.Model):
         self.review_commission_amount = self._calc(rules.get('review'), self.amount)
 
     def __str__(self):
-        return f"{self.client.name} - {self.amount}"
+        name = self.client.name if self.client else (self.review_client.name if self.review_client else '—')
+        return f"{name} - {self.amount}"
+
+    @property
+    def client_name(self):
+        if self.client:
+            return self.client.name
+        if self.review_client:
+            return self.review_client.name
+        return '—'
+
+    @property
+    def client_company(self):
+        if self.client:
+            return self.client.company or ''
+        if self.review_client:
+            return self.review_client.company or ''
+        return ''
+
+    @property
+    def entry_type(self):
+        return 'review' if self.review_client else 'client'
 
     class Meta:
         verbose_name = 'سطر عمولة'

@@ -45,12 +45,25 @@ def commission_create(request):
                 is_active=True,
             ).select_related('assigned_sales')
 
+            from workflow.models import ReviewClient
+            review_clients = ReviewClient.objects.filter(
+                tenant=request.user.tenant,
+                is_commissionable=True,
+            )
+
             entries = []
             for client in actual_clients:
                 entries.append(CommissionEntry(
                     sheet=sheet,
                     client=client,
                     sales_rep=client.assigned_sales or request.user,
+                    amount=0,
+                ))
+            for rc in review_clients:
+                entries.append(CommissionEntry(
+                    sheet=sheet,
+                    review_client=rc,
+                    sales_rep=request.user,
                     amount=0,
                 ))
             if entries:
@@ -67,7 +80,7 @@ def commission_create(request):
 @admin_required
 def commission_detail(request, pk):
     sheet = get_object_or_404(CommissionSheet, pk=pk, tenant=request.user.tenant)
-    entries = sheet.entries.select_related('client', 'client__assigned_accountant', 'sales_rep').prefetch_related('entry_commission_rules')
+    entries = sheet.entries.select_related('client', 'client__assigned_accountant', 'review_client', 'sales_rep').prefetch_related('entry_commission_rules')
 
     q = request.GET.get('q', '').strip()
     date_from = request.GET.get('date_from', '')
@@ -176,22 +189,29 @@ def commission_delete_sheet(request, pk):
 @admin_required
 def commission_refresh_sheet(request, pk):
     from clients.models import Client
+    from workflow.models import ReviewClient
     sheet = get_object_or_404(CommissionSheet, pk=pk, tenant=request.user.tenant)
-    existing_ids = set(sheet.entries.values_list('client_id', flat=True))
+
+    existing_client_ids = set(sheet.entries.exclude(client=None).values_list('client_id', flat=True))
+    existing_review_ids = set(sheet.entries.exclude(review_client=None).values_list('review_client_id', flat=True))
+
     new_clients = Client.objects.filter(
         tenant=request.user.tenant,
         is_commissionable=True,
         is_active=True,
-    ).exclude(id__in=existing_ids).select_related('assigned_sales')
+    ).exclude(id__in=existing_client_ids).select_related('assigned_sales')
+
+    new_review_clients = ReviewClient.objects.filter(
+        tenant=request.user.tenant,
+        is_commissionable=True,
+    ).exclude(id__in=existing_review_ids)
 
     entries = [
-        CommissionEntry(
-            sheet=sheet,
-            client=c,
-            sales_rep=c.assigned_sales or request.user,
-            amount=0,
-        )
+        CommissionEntry(sheet=sheet, client=c, sales_rep=c.assigned_sales or request.user, amount=0)
         for c in new_clients
+    ] + [
+        CommissionEntry(sheet=sheet, review_client=rc, sales_rep=request.user, amount=0)
+        for rc in new_review_clients
     ]
     if entries:
         CommissionEntry.objects.bulk_create(entries)
@@ -344,11 +364,11 @@ def export_sheet_excel(request, pk):
     for entry in entries:
         total = entry.commission_amount + entry.accountant_commission_amount + entry.review_commission_amount
         ws.append([
-            entry.client.name,
-            entry.client.company or '',
+            entry.client_name,
+            entry.client_company,
             entry.sales_rep.get_full_name() or entry.sales_rep.username,
-            entry.client.assigned_accountant.get_full_name() if entry.client.assigned_accountant else '—',
-            entry.client.assigned_review.get_full_name() if entry.client.assigned_review else '—',
+            entry.client.assigned_accountant.get_full_name() if entry.client and entry.client.assigned_accountant else '—',
+            entry.client.assigned_review.get_full_name() if entry.client and entry.client.assigned_review else '—',
             entry.amount,
             entry.commission_amount,
             entry.accountant_commission_amount,
@@ -392,11 +412,11 @@ def export_sheet_pdf(request, pk):
     for e in entries:
         total = e.commission_amount + e.accountant_commission_amount + e.review_commission_amount
         rows.append([
-            e.client.name,
-            e.client.company or '',
+            e.client_name,
+            e.client_company,
             e.sales_rep.get_full_name() or e.sales_rep.username,
-            e.client.assigned_accountant.get_full_name() if e.client.assigned_accountant else '—',
-            e.client.assigned_review.get_full_name() if e.client.assigned_review else '—',
+            e.client.assigned_accountant.get_full_name() if e.client and e.client.assigned_accountant else '—',
+            e.client.assigned_review.get_full_name() if e.client and e.client.assigned_review else '—',
             f"{e.amount:,.2f}",
             f"{e.commission_amount:,.2f}",
             f"{e.accountant_commission_amount:,.2f}",

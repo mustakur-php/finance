@@ -186,6 +186,19 @@ def stage_set_due(request, stage_pk):
 
 @login_required
 @admin_required
+def workflow_toggle_commissionable(request, pk):
+    if request.method != 'POST':
+        return redirect('workflow_detail', pk=pk)
+    client = get_object_or_404(ReviewClient, pk=pk, tenant=request.user.tenant)
+    client.is_commissionable = not client.is_commissionable
+    client.save(update_fields=['is_commissionable'])
+    status = 'خاضع للعمولة' if client.is_commissionable else 'غير خاضع للعمولة'
+    messages.success(request, f'{client.name} أصبح {status}')
+    return redirect('workflow_detail', pk=pk)
+
+
+@login_required
+@admin_required
 def workflow_report(request):
     clients = ReviewClient.objects.filter(tenant=request.user.tenant).prefetch_related('stages')
     return render(request, 'workflow/report.html', {

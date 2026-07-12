@@ -132,8 +132,13 @@
                                 <i class="bi {% if entry.is_confirmed %}bi-check-lg{% else %}bi-circle{% endif %}"></i>
                             </button>
                         </td>
-                        <td class="fw-semibold">{{ entry.client.name }}</td>
-                        <td class="text-muted">{{ entry.client.company|default:"—" }}</td>
+                        <td class="fw-semibold">
+                            {{ entry.client_name }}
+                            {% if entry.entry_type == 'review' %}
+                            <span class="badge ms-1" style="background:#6a1b9a;font-size:0.65rem;">مراجعة</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted">{{ entry.client_company|default:"—" }}</td>
                         <td>{{ entry.sales_rep.get_full_name|default:entry.sales_rep.username }}</td>
                         <td>
                             {% if entry.client.assigned_accountant %}
@@ -249,7 +254,7 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header bg-success bg-opacity-10">
-        <h6 class="modal-title text-success"><i class="bi bi-person-badge me-1"></i> عمولة المندوب — {{ entry.client.name }}</h6>
+        <h6 class="modal-title text-success"><i class="bi bi-person-badge me-1"></i> عمولة المندوب — {{ entry.client_name }}</h6>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
@@ -293,7 +298,7 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header bg-primary bg-opacity-10">
-        <h6 class="modal-title text-primary"><i class="bi bi-calculator me-1"></i> عمولة المحاسب — {{ entry.client.name }}</h6>
+        <h6 class="modal-title text-primary"><i class="bi bi-calculator me-1"></i> عمولة المحاسب — {{ entry.client_name }}</h6>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
@@ -337,7 +342,7 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header" style="background:#f3e5f5">
-        <h6 class="modal-title" style="color:#6a1b9a"><i class="bi bi-eye me-1"></i> عمولة المراجع — {{ entry.client.name }}</h6>
+        <h6 class="modal-title" style="color:#6a1b9a"><i class="bi bi-eye me-1"></i> عمولة المراجع — {{ entry.client_name }}</h6>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
