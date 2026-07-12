@@ -141,12 +141,12 @@
                         <td class="text-muted">{{ entry.client_company|default:"—" }}</td>
                         <td>{{ entry.sales_rep.get_full_name|default:entry.sales_rep.username }}</td>
                         <td>
-                            {% if entry.client.assigned_accountant %}
+                            {% if entry.client and entry.client.assigned_accountant %}
                                 {{ entry.client.assigned_accountant.get_full_name|default:entry.client.assigned_accountant.username }}
                             {% else %}<span class="text-muted">—</span>{% endif %}
                         </td>
                         <td>
-                            {% if entry.client.assigned_review %}
+                            {% if entry.client and entry.client.assigned_review %}
                                 {{ entry.client.assigned_review.get_full_name|default:entry.client.assigned_review.username }}
                             {% else %}<span class="text-muted">—</span>{% endif %}
                         </td>
