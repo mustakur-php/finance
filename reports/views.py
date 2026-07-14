@@ -356,15 +356,15 @@ def _style_header(ws, headers, fill_color='1a3a5c'):
 def export_clients_excel(request):
     import openpyxl
     from clients.models import Client
+    from workflow.models import ReviewClient
 
-    tenant      = request.user.tenant
-    date_from   = request.GET.get('date_from', '')
-    date_to     = request.GET.get('date_to', '')
+    tenant       = request.user.tenant
+    date_from    = request.GET.get('date_from', '')
+    date_to      = request.GET.get('date_to', '')
     city_filter  = request.GET.get('city', '')
     sales_filter = request.GET.get('sales', '')
-    type_filter  = request.GET.get('type', 'actual')
 
-    qs = Client.objects.filter(tenant=tenant, is_active=True, client_type=type_filter).select_related('assigned_sales','assigned_accountant','activity')
+    qs = Client.objects.filter(tenant=tenant, is_active=True, client_type='actual').select_related('assigned_sales','assigned_accountant','activity')
     if date_from:
         qs = qs.filter(created_at__date__gte=date_from)
     if date_to:
@@ -374,9 +374,18 @@ def export_clients_excel(request):
     if sales_filter:
         qs = qs.filter(assigned_sales_id=sales_filter)
 
+    review_qs = ReviewClient.objects.filter(tenant=tenant).select_related('assigned_reviewer')
+    if date_from:
+        review_qs = review_qs.filter(created_at__date__gte=date_from)
+    if date_to:
+        review_qs = review_qs.filter(created_at__date__lte=date_to)
+    if city_filter:
+        review_qs = review_qs.filter(city=city_filter)
+
     wb = openpyxl.Workbook()
+
     ws = wb.active
-    ws.title = 'العملاء'
+    ws.title = 'العملاء الفعليون'
     _style_header(ws, ['الاسم','الشركة','المدينة','الجوال','المندوب','المحاسب','النشاط','تاريخ الإضافة'])
     for c in qs:
         ws.append([
@@ -386,6 +395,16 @@ def export_clients_excel(request):
             c.activity.name if c.activity else '',
             str(c.created_at.date()) if c.created_at else '',
         ])
+
+    ws2 = wb.create_sheet(title='قسم المراجعة')
+    _style_header(ws2, ['الاسم','الشركة','المدينة','الجوال','المراجع','تاريخ الإضافة'])
+    for c in review_qs:
+        ws2.append([
+            c.name, c.company, c.city, c.phone,
+            c.assigned_reviewer.get_full_name() if c.assigned_reviewer else '',
+            str(c.created_at.date()) if c.created_at else '',
+        ])
+
     response = _make_excel_response('clients.xlsx')
     wb.save(response)
     return response
@@ -539,15 +558,15 @@ def _render_pdf(title, headers, rows, filename, username, has_totals=False):
 @admin_required
 def export_clients_pdf(request):
     from clients.models import Client
+    from workflow.models import ReviewClient
 
     tenant       = request.user.tenant
     date_from    = request.GET.get('date_from', '')
     date_to      = request.GET.get('date_to', '')
     city_filter  = request.GET.get('city', '')
     sales_filter = request.GET.get('sales', '')
-    type_filter  = request.GET.get('type', 'actual')
 
-    clients = Client.objects.filter(tenant=tenant, is_active=True, client_type=type_filter).select_related('assigned_sales', 'assigned_accountant', 'activity')
+    clients = Client.objects.filter(tenant=tenant, is_active=True, client_type='actual').select_related('assigned_sales', 'assigned_accountant', 'activity')
     if date_from:
         clients = clients.filter(created_at__date__gte=date_from)
     if date_to:
@@ -557,15 +576,29 @@ def export_clients_pdf(request):
     if sales_filter:
         clients = clients.filter(assigned_sales_id=sales_filter)
 
+    review_qs = ReviewClient.objects.filter(tenant=tenant).select_related('assigned_reviewer')
+    if date_from:
+        review_qs = review_qs.filter(created_at__date__gte=date_from)
+    if date_to:
+        review_qs = review_qs.filter(created_at__date__lte=date_to)
+    if city_filter:
+        review_qs = review_qs.filter(city=city_filter)
+
     username = request.user.get_full_name() or request.user.username
-    headers = ['الاسم', 'الشركة', 'المدينة', 'الجوال', 'المندوب', 'المحاسب', 'النشاط', 'تاريخ الإضافة']
+    headers = ['الاسم', 'الشركة', 'المدينة', 'الجوال', 'النوع', 'المندوب/المراجع', 'تاريخ الإضافة']
     rows = []
     for c in clients:
         rows.append([
             c.name or '', c.company or '', c.city or '', c.phone or '',
+            'فعلي',
             c.assigned_sales.get_full_name() if c.assigned_sales else '—',
-            c.assigned_accountant.get_full_name() if c.assigned_accountant else '—',
-            c.activity.name if c.activity else '—',
+            str(c.created_at.date()) if c.created_at else '',
+        ])
+    for c in review_qs:
+        rows.append([
+            c.name or '', c.company or '', c.city or '', c.phone or '',
+            'مراجعة',
+            c.assigned_reviewer.get_full_name() if c.assigned_reviewer else '—',
             str(c.created_at.date()) if c.created_at else '',
         ])
     return _render_pdf('تقرير العملاء', headers, rows, 'clients.pdf', username)
