@@ -585,19 +585,22 @@ def export_clients_pdf(request):
         review_qs = review_qs.filter(city=city_filter)
 
     username = request.user.get_full_name() or request.user.username
-    headers = ['الاسم', 'الشركة', 'المدينة', 'الجوال', 'النوع', 'المندوب/المراجع', 'تاريخ الإضافة']
+    headers = ['الاسم', 'الشركة', 'المدينة', 'الجوال', 'النوع', 'المندوب', 'المحاسب', 'المراجع', 'تاريخ الإضافة']
     rows = []
     for c in clients:
         rows.append([
             c.name or '', c.company or '', c.city or '', c.phone or '',
             'فعلي',
             c.assigned_sales.get_full_name() if c.assigned_sales else '—',
+            c.assigned_accountant.get_full_name() if c.assigned_accountant else '—',
+            '—',
             str(c.created_at.date()) if c.created_at else '',
         ])
     for c in review_qs:
         rows.append([
             c.name or '', c.company or '', c.city or '', c.phone or '',
             'مراجعة',
+            '—', '—',
             c.assigned_reviewer.get_full_name() if c.assigned_reviewer else '—',
             str(c.created_at.date()) if c.created_at else '',
         ])
