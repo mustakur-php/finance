@@ -154,26 +154,38 @@ def stage_update(request, stage_pk):
         stage.updated_by = request.user
         action           = request.POST.get('action')
 
+        from audit_log.utils import log_action
+        from audit_log.models import AuditLog
+
         if action == 'complete':
             if request.user.is_admin:
                 _complete_stage(stage, request.user)
+                log_action(request, AuditLog.ACTION_UPDATE, obj=stage,
+                           changes={'المرحلة': {'من': 'قيد التنفيذ', 'إلى': 'مكتملة'}})
                 messages.success(request, 'تم إكمال المرحلة والانتقال للتالية')
             else:
                 stage.status = WorkflowStage.STATUS_WAITING
                 stage.save()
+                log_action(request, AuditLog.ACTION_UPDATE, obj=stage,
+                           changes={'المرحلة': {'من': 'قيد التنفيذ', 'إلى': 'بانتظار الاعتماد'}})
                 messages.success(request, 'تم إرسال المرحلة للاعتماد')
 
         elif action == 'approve' and request.user.is_admin:
             _complete_stage(stage, request.user)
+            log_action(request, AuditLog.ACTION_UPDATE, obj=stage,
+                       changes={'المرحلة': {'من': 'بانتظار الاعتماد', 'إلى': 'مكتملة'}})
             messages.success(request, 'تم اعتماد المرحلة والانتقال للتالية')
 
         elif action == 'reject' and request.user.is_admin:
             stage.status = WorkflowStage.STATUS_IN_PROGRESS
             stage.save()
+            log_action(request, AuditLog.ACTION_UPDATE, obj=stage,
+                       changes={'المرحلة': {'من': 'بانتظار الاعتماد', 'إلى': 'مرفوضة'}})
             messages.warning(request, 'تم رفض الاعتماد وإرجاع المرحلة')
 
         else:
             stage.save()
+            log_action(request, AuditLog.ACTION_UPDATE, obj=stage)
             messages.success(request, 'تم حفظ الملاحظات')
 
     return redirect('workflow_detail', pk=stage.client.pk)
@@ -219,6 +231,9 @@ def workflow_client_edit(request, pk):
         client.job_title          = request.POST.get('job_title', '').strip()
         client.notes              = request.POST.get('notes', '').strip()
         client.save()
+        from audit_log.utils import log_action
+        from audit_log.models import AuditLog
+        log_action(request, AuditLog.ACTION_UPDATE, obj=client)
         messages.success(request, 'تم تحديث بيانات العميل بنجاح')
         return redirect('workflow_detail', pk=pk)
     return render(request, 'workflow/client_edit.html', {'client': client})
@@ -231,6 +246,7 @@ def workflow_change_reviewer(request, pk):
         return redirect('workflow_detail', pk=pk)
     client = get_object_or_404(ReviewClient, pk=pk, tenant=request.user.tenant)
     reviewer_id = request.POST.get('reviewer_id')
+    old_reviewer = client.assigned_reviewer.get_full_name() if client.assigned_reviewer else '—'
     if reviewer_id:
         from accounts.models import User
         reviewer = get_object_or_404(User, pk=reviewer_id, tenant=request.user.tenant, role=User.ROLE_REVIEW)
@@ -238,6 +254,11 @@ def workflow_change_reviewer(request, pk):
     else:
         client.assigned_reviewer = None
     client.save(update_fields=['assigned_reviewer'])
+    new_reviewer = client.assigned_reviewer.get_full_name() if client.assigned_reviewer else '—'
+    from audit_log.utils import log_action
+    from audit_log.models import AuditLog
+    log_action(request, AuditLog.ACTION_UPDATE, obj=client,
+               changes={'المراجع': {'من': old_reviewer, 'إلى': new_reviewer}})
     messages.success(request, 'تم تغيير المراجع بنجاح')
     return redirect('workflow_detail', pk=pk)
 
@@ -249,6 +270,10 @@ def workflow_client_delete(request, pk):
         return redirect('workflow_list')
     client = get_object_or_404(ReviewClient, pk=pk, tenant=request.user.tenant)
     name = client.name
+    from audit_log.utils import log_action
+    from audit_log.models import AuditLog
+    log_action(request, AuditLog.ACTION_DELETE, model_name='ReviewClient',
+               object_repr=name, object_id=str(pk))
     client.delete()
     messages.success(request, f'تم حذف العميل "{name}" بنجاح')
     return redirect('workflow_list')

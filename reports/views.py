@@ -99,14 +99,15 @@ def reports_home(request):
 def report_clients(request):
     from clients.models import Client, Activity
     from accounts.models import User
+    from workflow.models import ReviewClient
 
     tenant = request.user.tenant
     date_from, date_to = _date_filters(request)
-    city_filter    = request.GET.get('city', '')
-    sales_filter   = request.GET.get('sales', '')
-    type_filter    = request.GET.get('type', 'actual')
+    city_filter  = request.GET.get('city', '')
+    sales_filter = request.GET.get('sales', '')
 
-    qs = Client.objects.filter(tenant=tenant, is_active=True, client_type=type_filter)
+    # العملاء الفعليون
+    qs = Client.objects.filter(tenant=tenant, is_active=True, client_type='actual')
     if date_from:
         qs = qs.filter(created_at__date__gte=date_from)
     if date_to:
@@ -116,22 +117,36 @@ def report_clients(request):
     if sales_filter:
         qs = qs.filter(assigned_sales_id=sales_filter)
 
+    # عملاء المراجعة
+    review_qs = ReviewClient.objects.filter(tenant=tenant)
+    if date_from:
+        review_qs = review_qs.filter(created_at__date__gte=date_from)
+    if date_to:
+        review_qs = review_qs.filter(created_at__date__lte=date_to)
+    if city_filter:
+        review_qs = review_qs.filter(city=city_filter)
+
     by_city     = qs.values('city').annotate(count=Count('id')).order_by('-count')
     by_activity = qs.values('activity__name').annotate(count=Count('id')).order_by('-count')
     by_sales    = qs.values('assigned_sales__first_name','assigned_sales__last_name','assigned_sales__username').annotate(count=Count('id')).order_by('-count')
-    cities      = Client.objects.filter(tenant=tenant, is_active=True).exclude(city='').values_list('city', flat=True).distinct()
+    cities      = sorted(set(
+        Client.objects.filter(tenant=tenant, is_active=True, client_type='actual').exclude(city='').values_list('city', flat=True)
+    ))
     sales_users = User.objects.filter(tenant=tenant, role='sales', is_active=True)
 
     return render(request, 'reports/clients.html', {
         'clients': qs.select_related('assigned_sales','assigned_accountant','activity'),
-        'total': qs.count(),
+        'review_clients': review_qs.select_related('assigned_reviewer'),
+        'total': qs.count() + review_qs.count(),
+        'total_actual': qs.count(),
+        'total_review': review_qs.count(),
         'by_city': by_city,
         'by_activity': by_activity,
         'by_sales': by_sales,
         'cities': cities,
         'sales_users': sales_users,
         'filters': {'date_from': date_from, 'date_to': date_to,
-                    'city': city_filter, 'sales': sales_filter, 'type': type_filter},
+                    'city': city_filter, 'sales': sales_filter},
     })
 
 

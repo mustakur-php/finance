@@ -259,12 +259,20 @@ def client_convert(request, pk):
         client.converted_status = Client.CONVERTED_REVIEW
         client.converted_at = timezone.now()
         client.save(update_fields=['converted_status', 'converted_at'])
+        from audit_log.utils import log_action
+        from audit_log.models import AuditLog
+        log_action(request, AuditLog.ACTION_UPDATE, obj=client,
+                   changes={'تحويل': {'من': 'مستهدف', 'إلى': 'قسم المراجعة'}})
         messages.success(request, f'تم تحويل "{client.name}" إلى قسم المراجعة')
         return redirect('workflow_list')
     else:
         client.converted_status = Client.CONVERTED_ACTUAL
         client.converted_at = timezone.now()
         client.save(update_fields=['converted_status', 'converted_at'])
+        from audit_log.utils import log_action
+        from audit_log.models import AuditLog
+        log_action(request, AuditLog.ACTION_UPDATE, obj=client,
+                   changes={'تحويل': {'من': 'مستهدف', 'إلى': 'عميل فعلي'}})
         messages.success(request, f'تم تحويل "{client.name}" إلى عميل فعلي')
         return redirect('targeted_list')
 
@@ -442,8 +450,13 @@ def client_delete(request, pk):
         return redirect('clients_list')
     client = get_object_or_404(Client, pk=pk, tenant=request.user.tenant)
     name = client.name
+    client_type = client.client_type
+    from audit_log.utils import log_action
+    from audit_log.models import AuditLog
+    log_action(request, AuditLog.ACTION_DELETE, model_name='Client',
+               object_repr=name, object_id=str(pk))
     client.delete()
     messages.success(request, f'تم حذف العميل "{name}" بنجاح')
-    if client.client_type == Client.TYPE_POTENTIAL:
+    if client_type == Client.TYPE_POTENTIAL:
         return redirect('targeted_list')
     return redirect('clients_list')

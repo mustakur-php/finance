@@ -159,6 +159,10 @@ def profile_view(request):
             profile_form = ProfileForm(request.POST, instance=user)
             if profile_form.is_valid():
                 profile_form.save()
+                from audit_log.utils import log_action
+                from audit_log.models import AuditLog
+                log_action(request, AuditLog.ACTION_UPDATE, obj=user,
+                           changes={'الملف الشخصي': {'من': '', 'إلى': 'تم التحديث'}})
                 messages.success(request, 'تم تحديث المعلومات الشخصية بنجاح')
                 return redirect('profile')
 
@@ -168,6 +172,10 @@ def profile_view(request):
                 user.set_password(password_form.cleaned_data['new_password'])
                 user.save()
                 update_session_auth_hash(request, user)
+                from audit_log.utils import log_action
+                from audit_log.models import AuditLog
+                log_action(request, AuditLog.ACTION_UPDATE, obj=user,
+                           changes={'كلمة المرور': {'من': '', 'إلى': 'تم التغيير'}})
                 password_form = ChangePasswordForm(user=user)
                 return render(request, 'accounts/profile.html', {
                     'profile_form': profile_form,
@@ -198,5 +206,10 @@ def user_toggle(request, pk):
     user.is_active = not user.is_active
     user.save()
     status = 'تفعيل' if user.is_active else 'تعطيل'
+    from audit_log.utils import log_action
+    from audit_log.models import AuditLog
+    log_action(request, AuditLog.ACTION_UPDATE, obj=user,
+               changes={'الحالة': {'من': 'معطّل' if user.is_active else 'مفعّل',
+                                   'إلى': 'مفعّل' if user.is_active else 'معطّل'}})
     messages.success(request, f'تم {status} المستخدم {user.username}')
     return redirect('users_list')

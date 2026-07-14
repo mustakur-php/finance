@@ -34,6 +34,9 @@ def visit_create(request):
         visit.tenant = request.user.tenant
         visit.sales_rep = request.user
         visit.save()
+        from audit_log.utils import log_action
+        from audit_log.models import AuditLog
+        log_action(request, AuditLog.ACTION_CREATE, obj=visit)
         messages.success(request, 'تم تسجيل الزيارة بنجاح')
         return redirect('visits_list')
     return render(request, 'visits/form.html', {'form': form, 'title': 'تسجيل زيارة'})
@@ -46,6 +49,9 @@ def visit_edit(request, pk):
     form = VisitForm(request.POST or None, instance=visit, user=request.user)
     if request.method == 'POST' and form.is_valid():
         form.save()
+        from audit_log.utils import log_action
+        from audit_log.models import AuditLog
+        log_action(request, AuditLog.ACTION_UPDATE, obj=visit)
         messages.success(request, 'تم تحديث الزيارة')
         return redirect('visits_list')
     return render(request, 'visits/form.html', {'form': form, 'title': 'تعديل زيارة'})
