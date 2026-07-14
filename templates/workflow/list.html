@@ -27,11 +27,6 @@
         <a href="{% url 'workflow_report' %}" class="btn btn-outline-primary btn-sm">
             <i class="bi bi-bar-chart-line me-1"></i> التقارير
         </a>
-        {% if user.is_admin %}
-        <a href="{% url 'workflow_client_create' %}" class="btn btn-primary btn-sm">
-            <i class="bi bi-plus-lg me-1"></i> إضافة عميل
-        </a>
-        {% endif %}
     </div>
 </div>
 
@@ -108,7 +103,6 @@
                     <i class="bi bi-inbox fs-2 d-block mb-2 opacity-50"></i>
                     لا يوجد عملاء في قسم المراجعة
                     {% if user.is_admin %}
-                    — <a href="{% url 'workflow_client_create' %}">أضف عميلاً</a>
                     {% endif %}
                 </td>
             </tr>

@@ -6,9 +6,6 @@
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span><i class="bi bi-people me-1"></i> العملاء ({{ page_obj.paginator.count }})</span>
-        <a href="{% url 'client_create' %}" class="btn btn-primary btn-sm">
-            <i class="bi bi-plus-lg me-1"></i> إضافة عميل
-        </a>
     </div>
     <div class="card-body border-bottom pb-3">
         <form method="get">
