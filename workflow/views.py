@@ -132,9 +132,12 @@ def workflow_detail(request, pk):
         messages.error(request, 'ليس لديك صلاحية عرض هذا العميل')
         return redirect('workflow_list')
     stages = client.stages.all()
+    from accounts.models import User
+    reviewers = User.objects.filter(tenant=request.user.tenant, role=User.ROLE_REVIEW, is_active=True)
     return render(request, 'workflow/detail.html', {
         'client': client,
         'stages': stages,
+        'reviewers': reviewers,
     })
 
 
@@ -197,6 +200,24 @@ def workflow_toggle_commissionable(request, pk):
     client.save(update_fields=['is_commissionable'])
     status = 'خاضع للعمولة' if client.is_commissionable else 'غير خاضع للعمولة'
     messages.success(request, f'{client.name} أصبح {status}')
+    return redirect('workflow_detail', pk=pk)
+
+
+@login_required
+@admin_required
+def workflow_change_reviewer(request, pk):
+    if request.method != 'POST':
+        return redirect('workflow_detail', pk=pk)
+    client = get_object_or_404(ReviewClient, pk=pk, tenant=request.user.tenant)
+    reviewer_id = request.POST.get('reviewer_id')
+    if reviewer_id:
+        from accounts.models import User
+        reviewer = get_object_or_404(User, pk=reviewer_id, tenant=request.user.tenant, role=User.ROLE_REVIEW)
+        client.assigned_reviewer = reviewer
+    else:
+        client.assigned_reviewer = None
+    client.save(update_fields=['assigned_reviewer'])
+    messages.success(request, 'تم تغيير المراجع بنجاح')
     return redirect('workflow_detail', pk=pk)
 
 

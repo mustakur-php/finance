@@ -38,9 +38,15 @@
             {% if client.phone %}
             <div class="col-auto text-muted small"><i class="bi bi-telephone me-1"></i>{{ client.phone }}</div>
             {% endif %}
-            {% if client.assigned_reviewer %}
-            <div class="col-auto text-muted small"><i class="bi bi-person-check me-1"></i>المراجع: <strong>{{ client.assigned_reviewer.get_full_name|default:client.assigned_reviewer.username }}</strong></div>
-            {% endif %}
+            <div class="col-auto text-muted small">
+                <i class="bi bi-person-check me-1"></i>المراجع:
+                <strong>{{ client.assigned_reviewer.get_full_name|default:client.assigned_reviewer.username|default:"—" }}</strong>
+                {% if user.is_admin %}
+                <button class="btn btn-link btn-sm p-0 ms-1" data-bs-toggle="modal" data-bs-target="#changeReviewerModal">
+                    <i class="bi bi-pencil-square"></i>
+                </button>
+                {% endif %}
+            </div>
             {% if client.notes %}
             <div class="col-12 text-muted small mt-1"><i class="bi bi-chat-left-text me-1"></i>{{ client.notes }}</div>
             {% endif %}
@@ -145,6 +151,35 @@
 </div>
 
 {% if user.is_admin %}
+<div class="modal fade" id="changeReviewerModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title"><i class="bi bi-person-check me-1"></i> تغيير المراجع</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'workflow_change_reviewer' client.pk %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <label class="form-label fw-semibold">اختر المراجع</label>
+                    <select name="reviewer_id" class="form-select">
+                        <option value="">— بدون مراجع —</option>
+                        {% for r in reviewers %}
+                        <option value="{{ r.pk }}" {% if client.assigned_reviewer_id == r.pk %}selected{% endif %}>
+                            {{ r.get_full_name|default:r.username }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary btn-sm">حفظ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="deleteClientModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
