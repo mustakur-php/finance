@@ -68,6 +68,10 @@ def targeted_list(request):
     district = request.GET.get('district', '')
     activity = request.GET.get('activity', '')
     sales_id = request.GET.get('sales', '')
+    show_converted = request.GET.get('converted', '') == '1'
+
+    if not show_converted:
+        clients = clients.filter(converted_status='')
     if q:
         clients = clients.filter(name__icontains=q) | clients.filter(company__icontains=q)
     if city:
@@ -83,6 +87,7 @@ def targeted_list(request):
     sales_users = []
     if request.user.is_admin:
         sales_users = UserModel.objects.filter(tenant=request.user.tenant, role=UserModel.ROLE_SALES, is_active=True)
+    converted_count = Client.objects.filter(tenant=request.user.tenant, client_type=Client.TYPE_POTENTIAL).exclude(converted_status='').count()
     filters = {'q': q, 'city': city, 'district': district, 'activity': activity, 'sales': sales_id}
     paginator = Paginator(clients.order_by('-created_at'), 20)
     page_obj = paginator.get_page(request.GET.get('page'))
@@ -90,6 +95,8 @@ def targeted_list(request):
         'clients': page_obj, 'page_obj': page_obj, 'filters': filters,
         'activities': activities, 'cities': cities,
         'sales_users': sales_users,
+        'show_converted': show_converted,
+        'converted_count': converted_count,
     })
 
 
@@ -230,11 +237,39 @@ def import_targeted_clients(request):
 def client_convert(request, pk):
     if request.method != 'POST':
         return redirect('targeted_list')
-    client = get_object_or_404(Client, pk=pk, tenant=request.user.tenant)
-    client.client_type = Client.TYPE_ACTUAL
-    client.save()
-    messages.success(request, f'تم تحويل "{client.name}" إلى عميل فعلي')
-    return redirect('clients_list')
+    from django.utils import timezone
+    client = get_object_or_404(Client, pk=pk, tenant=request.user.tenant, client_type=Client.TYPE_POTENTIAL)
+    target = request.POST.get('target', 'actual')
+
+    if target == 'review':
+        from workflow.models import ReviewClient
+        ReviewClient.objects.create(
+            tenant=client.tenant,
+            name=client.name,
+            company=client.company,
+            phone=client.phone,
+            email=client.email,
+            city=client.city,
+            district=client.district,
+            address=client.address,
+            responsible_person=client.responsible_person,
+            job_title=client.job_title,
+            notes=client.notes,
+            assigned_reviewer=client.assigned_sales,
+            created_by=request.user,
+        )
+        client.converted_status = Client.CONVERTED_REVIEW
+        client.converted_at = timezone.now()
+        client.save(update_fields=['converted_status', 'converted_at'])
+        messages.success(request, f'تم تحويل "{client.name}" إلى قسم المراجعة')
+        return redirect('workflow_list')
+    else:
+        client.client_type = Client.TYPE_ACTUAL
+        client.converted_status = Client.CONVERTED_ACTUAL
+        client.converted_at = timezone.now()
+        client.save(update_fields=['client_type', 'converted_status', 'converted_at'])
+        messages.success(request, f'تم تحويل "{client.name}" إلى عميل فعلي')
+        return redirect('clients_list')
 
 
 @login_required

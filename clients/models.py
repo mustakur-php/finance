@@ -51,6 +51,16 @@ class Client(models.Model):
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
                                     null=True, blank=True, related_name='created_clients',
                                     verbose_name='أضافه')
+    CONVERTED_NONE = ''
+    CONVERTED_ACTUAL = 'actual'
+    CONVERTED_REVIEW = 'review'
+    CONVERTED_CHOICES = [
+        (CONVERTED_NONE,   'لم يُحوَّل'),
+        (CONVERTED_ACTUAL, 'تم التحويل لعميل فعلي'),
+        (CONVERTED_REVIEW, 'تم التحويل لقسم المراجعة'),
+    ]
+    converted_status = models.CharField(max_length=10, choices=CONVERTED_CHOICES, default=CONVERTED_NONE, blank=True, verbose_name='حالة التحويل')
+    converted_at = models.DateTimeField(null=True, blank=True, verbose_name='تاريخ التحويل')
     is_active = models.BooleanField(default=True, verbose_name='نشط')
     is_commissionable = models.BooleanField(default=False, verbose_name='خاضع للعمولة')
     created_at = models.DateTimeField(auto_now_add=True)
