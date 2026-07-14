@@ -82,7 +82,10 @@ def dashboard_view(request):
         items = []
 
     elif user.is_review:
-        context['my_clients'] = user.tenant.clients.filter(is_active=True).count() if user.tenant else 0
+        from workflow.models import ReviewClient
+        regular = user.tenant.clients.filter(is_active=True, assigned_review=user).count() if user.tenant else 0
+        review = ReviewClient.objects.filter(tenant=user.tenant, assigned_reviewer=user).count() if user.tenant else 0
+        context['my_clients'] = regular + review
         items = []
 
     else:
