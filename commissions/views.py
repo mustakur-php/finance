@@ -12,16 +12,17 @@ from .forms import CommissionSheetForm
 @login_required
 @admin_required
 def commissions_list(request):
-    sheets = CommissionSheet.objects.filter(tenant=request.user.tenant)
+    from decimal import Decimal
+    zero = Decimal('0')
+    sheets = CommissionSheet.objects.filter(tenant=request.user.tenant).annotate(
+        t_amount=Sum('entries__amount'),
+        t_sales=Sum('entries__commission_amount'),
+        t_accountant=Sum('entries__accountant_commission_amount'),
+        t_review=Sum('entries__review_commission_amount'),
+    )
     for sheet in sheets:
-        agg = sheet.entries.aggregate(
-            t_amount=Sum('amount'),
-            t_sales=Sum('commission_amount'),
-            t_accountant=Sum('accountant_commission_amount'),
-            t_review=Sum('review_commission_amount'),
-        )
-        sheet.total_amount = agg['t_amount'] or 0
-        sheet.total_commission = (agg['t_sales'] or 0) + (agg['t_accountant'] or 0) + (agg['t_review'] or 0)
+        sheet.total_amount = sheet.t_amount or zero
+        sheet.total_commission = (sheet.t_sales or zero) + (sheet.t_accountant or zero) + (sheet.t_review or zero)
     return render(request, 'commissions/list.html', {'sheets': sheets})
 
 
