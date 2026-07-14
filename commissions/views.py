@@ -175,10 +175,8 @@ def commission_toggle(request, pk):
 
 
 @login_required
+@admin_required
 def commission_delete_sheet(request, pk):
-    if not request.user.is_admin:
-        messages.error(request, 'هذه العملية للأدمن فقط')
-        return redirect('commissions_list')
     sheet = get_object_or_404(CommissionSheet, pk=pk, tenant=request.user.tenant)
     from audit_log.utils import log_action
     from audit_log.models import AuditLog

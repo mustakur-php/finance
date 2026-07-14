@@ -72,6 +72,8 @@ def event_create(request):
 @login_required
 def event_toggle_done(request, pk):
     event = get_object_or_404(Event, pk=pk, tenant=request.user.tenant)
+    if not request.user.is_admin and event.assigned_to != request.user:
+        return redirect('calendar_view')
     if request.method == 'POST':
         event.status = Event.STATUS_DONE
         event.is_done = True
@@ -171,6 +173,8 @@ def event_reschedule(request, pk):
 @login_required
 def event_cancel(request, pk):
     event = get_object_or_404(Event, pk=pk, tenant=request.user.tenant)
+    if not request.user.is_admin and event.assigned_to != request.user:
+        return redirect('calendar_view')
     if request.method == 'POST':
         event.status = Event.STATUS_CANCELLED
         cancel_note = request.POST.get('notes', '')
