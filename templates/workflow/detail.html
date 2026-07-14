@@ -43,7 +43,7 @@
             {% endif %}
             <div class="col-auto text-muted small">
                 <i class="bi bi-person-check me-1"></i>المراجع:
-                <strong>{{ client.assigned_reviewer.get_full_name|default:client.assigned_reviewer.username|default:"—" }}</strong>
+                <strong>{% if client.assigned_reviewer %}{{ client.assigned_reviewer.get_full_name|default:client.assigned_reviewer.username }}{% else %}—{% endif %}</strong>
                 {% if user.is_admin %}
                 <button class="btn btn-link btn-sm p-0 ms-1" data-bs-toggle="modal" data-bs-target="#changeReviewerModal">
                     <i class="bi bi-pencil-square"></i>
