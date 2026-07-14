@@ -202,6 +202,18 @@ def workflow_toggle_commissionable(request, pk):
 
 @login_required
 @admin_required
+def workflow_client_delete(request, pk):
+    if request.method != 'POST':
+        return redirect('workflow_list')
+    client = get_object_or_404(ReviewClient, pk=pk, tenant=request.user.tenant)
+    name = client.name
+    client.delete()
+    messages.success(request, f'تم حذف العميل "{name}" بنجاح')
+    return redirect('workflow_list')
+
+
+@login_required
+@admin_required
 def workflow_report(request):
     clients = ReviewClient.objects.filter(tenant=request.user.tenant).prefetch_related('stages')
     return render(request, 'workflow/report.html', {
