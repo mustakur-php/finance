@@ -205,6 +205,27 @@ def workflow_toggle_commissionable(request, pk):
 
 @login_required
 @admin_required
+def workflow_client_edit(request, pk):
+    client = get_object_or_404(ReviewClient, pk=pk, tenant=request.user.tenant)
+    if request.method == 'POST':
+        client.name               = request.POST.get('name', '').strip() or client.name
+        client.company            = request.POST.get('company', '').strip()
+        client.phone              = request.POST.get('phone', '').strip()
+        client.email              = request.POST.get('email', '').strip()
+        client.city               = request.POST.get('city', '').strip()
+        client.district           = request.POST.get('district', '').strip()
+        client.address            = request.POST.get('address', '').strip()
+        client.responsible_person = request.POST.get('responsible_person', '').strip()
+        client.job_title          = request.POST.get('job_title', '').strip()
+        client.notes              = request.POST.get('notes', '').strip()
+        client.save()
+        messages.success(request, 'تم تحديث بيانات العميل بنجاح')
+        return redirect('workflow_detail', pk=pk)
+    return render(request, 'workflow/client_edit.html', {'client': client})
+
+
+@login_required
+@admin_required
 def workflow_change_reviewer(request, pk):
     if request.method != 'POST':
         return redirect('workflow_detail', pk=pk)

@@ -9,6 +9,7 @@ urlpatterns = [
     path('stage/<int:stage_pk>/due/',     views.stage_set_due,          name='stage_set_due'),
     path('<int:pk>/toggle-commission/',   views.workflow_toggle_commissionable, name='workflow_toggle_commissionable'),
     path('<int:pk>/delete/',              views.workflow_client_delete,         name='workflow_client_delete'),
+    path('<int:pk>/edit/',                views.workflow_client_edit,           name='workflow_client_edit'),
     path('<int:pk>/change-reviewer/',     views.workflow_change_reviewer,        name='workflow_change_reviewer'),
     path('report/',                       views.workflow_report,         name='workflow_report'),
 ]

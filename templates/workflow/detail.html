@@ -16,6 +16,9 @@
                 {% if client.is_commissionable %}خاضع للعمولة{% else %}غير خاضع للعمولة{% endif %}
             </button>
         </form>
+        <a href="{% url 'workflow_client_edit' client.pk %}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-pencil me-1"></i> تعديل
+        </a>
         <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteClientModal">
             <i class="bi bi-trash me-1"></i> حذف
         </button>

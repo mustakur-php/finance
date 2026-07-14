@@ -7,12 +7,6 @@
     <div class="card-header d-flex justify-content-between align-items-center">
         <div class="d-flex align-items-center gap-3">
             <span><i class="bi bi-crosshair me-1"></i> العملاء المستهدفون ({{ total_count }})</span>
-            {% if converted_count %}
-            <a href="?converted={% if show_converted %}0{% else %}1{% endif %}" class="btn btn-sm {% if show_converted %}btn-warning{% else %}btn-outline-secondary{% endif %}">
-                <i class="bi bi-arrow-left-right me-1"></i>
-                {% if show_converted %}إخفاء المحوَّلين{% else %}المحوَّلون ({{ converted_count }}){% endif %}
-            </a>
-            {% endif %}
         </div>
         <div class="d-flex gap-2">
             <a href="{% url 'export_targeted_template' %}" class="btn btn-outline-success btn-sm">
@@ -115,8 +109,7 @@
                             <a href="{% url 'client_detail' client.pk %}" class="btn btn-sm btn-outline-secondary" title="عرض">
                                 <i class="bi bi-eye"></i>
                             </a>
-                            {% if not client.converted_status %}
-                            <a href="{% url 'client_edit' client.pk %}" class="btn btn-sm btn-outline-primary" title="تعديل">
+                                <a href="{% url 'client_edit' client.pk %}" class="btn btn-sm btn-outline-primary" title="تعديل">
                                 <i class="bi bi-pencil"></i>
                             </a>
                             <div class="dropdown">
@@ -142,11 +135,6 @@
                                     </li>
                                 </ul>
                             </div>
-                            {% else %}
-                            <span class="badge {% if client.converted_status == 'actual' %}bg-success{% else %}bg-purple{% endif %}" style="{% if client.converted_status == 'review' %}background:#6a1b9a{% endif %}">
-                                {% if client.converted_status == 'actual' %}عميل فعلي{% else %}مراجعة{% endif %}
-                            </span>
-                            {% endif %}
                         </div>
                     </td>
                 </tr>
