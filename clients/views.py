@@ -438,3 +438,17 @@ def commission_rule_delete(request, client_pk, department):
         entry.save()
     messages.success(request, 'تم حذف قاعدة العمولة')
     return redirect('client_detail', pk=client_pk)
+
+
+@login_required
+@admin_required
+def client_delete(request, pk):
+    if request.method != 'POST':
+        return redirect('clients_list')
+    client = get_object_or_404(Client, pk=pk, tenant=request.user.tenant)
+    name = client.name
+    client.delete()
+    messages.success(request, f'تم حذف العميل "{name}" بنجاح')
+    if client.client_type == Client.TYPE_POTENTIAL:
+        return redirect('targeted_list')
+    return redirect('clients_list')

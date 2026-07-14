@@ -14,6 +14,7 @@ urlpatterns = [
     path('<int:client_pk>/commission/save/', views.commission_rule_save, name='commission_rule_save'),
     path('<int:client_pk>/commission/<str:department>/delete/', views.commission_rule_delete, name='commission_rule_delete'),
     path('<int:pk>/toggle-commission/', views.toggle_commissionable, name='toggle_commissionable'),
+    path('<int:pk>/delete/', views.client_delete, name='client_delete'),
     path('activities/', views.activities_list, name='activities_list'),
     path('activities/create/', views.activity_create, name='activity_create'),
     path('activities/<int:pk>/toggle/', views.activity_toggle, name='activity_toggle'),
