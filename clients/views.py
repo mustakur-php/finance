@@ -245,7 +245,8 @@ def client_convert(request, pk):
 
     if target == 'review':
         from workflow.models import ReviewClient
-        ReviewClient.objects.create(
+        from workflow.views import _create_stages
+        review_client = ReviewClient.objects.create(
             tenant=client.tenant,
             name=client.name,
             company=client.company,
@@ -260,6 +261,7 @@ def client_convert(request, pk):
             assigned_reviewer=client.assigned_sales,
             created_by=request.user,
         )
+        _create_stages(review_client, timezone.localdate(), {})
         client.converted_status = Client.CONVERTED_REVIEW
         client.converted_at = timezone.now()
         client.save(update_fields=['converted_status', 'converted_at'])
