@@ -355,7 +355,7 @@ def export_sheet_excel(request, pk):
     from django.http import HttpResponse
 
     sheet = get_object_or_404(CommissionSheet, pk=pk, tenant=request.user.tenant)
-    entries = _apply_sheet_filters(_get_sheet_entries(sheet), request)
+    entries = list(_apply_sheet_filters(_get_sheet_entries(sheet), request))
 
     wb = openpyxl.Workbook()
     ws = wb.active
