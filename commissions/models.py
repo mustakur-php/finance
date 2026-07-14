@@ -51,9 +51,9 @@ class CommissionEntry(models.Model):
             result = min(result, rule.max_amount)
         return result
 
-    def recalculate_commissions(self):
-        """يعيد الحساب من قواعد السطر الخاص — لا يحفظ تلقائياً"""
-        rules = {r.department: r for r in self.entry_commission_rules.all()}
+    def recalculate_commissions(self, rules=None):
+        if rules is None:
+            rules = {r.department: r for r in self.entry_commission_rules.all()}
         self.commission_amount = self._calc(rules.get('sales'), self.amount)
         self.accountant_commission_amount = self._calc(rules.get('accountant'), self.amount)
         self.review_commission_amount = self._calc(rules.get('review'), self.amount)

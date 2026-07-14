@@ -150,7 +150,8 @@ def commission_save_entries(request, pk):
                 amount = Decimal(request.POST[key] or '0')
                 if entry.amount != amount:
                     entry.amount = amount
-                    entry.recalculate_commissions()
+                    rules = {r.department: r for r in entry.entry_commission_rules.all()}
+                    entry.recalculate_commissions(rules=rules)
                     entry.save()
             except Exception:
                 pass
