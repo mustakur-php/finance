@@ -43,7 +43,7 @@ def commission_create(request):
                 tenant=request.user.tenant,
                 is_commissionable=True,
                 is_active=True,
-            ).select_related('assigned_sales')
+            ).select_related('assigned_sales', 'assigned_accountant', 'assigned_review')
 
             from workflow.models import ReviewClient
             review_clients = ReviewClient.objects.filter(
@@ -57,6 +57,8 @@ def commission_create(request):
                     sheet=sheet,
                     client=client,
                     sales_rep=client.assigned_sales or request.user,
+                    accountant_rep=client.assigned_accountant,
+                    reviewer_rep=client.assigned_review,
                     amount=0,
                 ))
             for rc in review_clients:
@@ -64,6 +66,7 @@ def commission_create(request):
                     sheet=sheet,
                     review_client=rc,
                     sales_rep=rc.assigned_reviewer or request.user,
+                    reviewer_rep=rc.assigned_reviewer,
                     amount=0,
                 ))
             if entries:
@@ -80,7 +83,7 @@ def commission_create(request):
 @admin_required
 def commission_detail(request, pk):
     sheet = get_object_or_404(CommissionSheet, pk=pk, tenant=request.user.tenant)
-    entries = sheet.entries.select_related('client', 'client__assigned_accountant', 'review_client', 'sales_rep').prefetch_related('entry_commission_rules')
+    entries = sheet.entries.select_related('client', 'review_client', 'sales_rep', 'accountant_rep', 'reviewer_rep').prefetch_related('entry_commission_rules')
 
     q = request.GET.get('q', '').strip()
     date_from = request.GET.get('date_from', '')
@@ -199,7 +202,7 @@ def commission_refresh_sheet(request, pk):
         tenant=request.user.tenant,
         is_commissionable=True,
         is_active=True,
-    ).exclude(id__in=existing_client_ids).select_related('assigned_sales')
+    ).exclude(id__in=existing_client_ids).select_related('assigned_sales', 'assigned_accountant', 'assigned_review')
 
     new_review_clients = ReviewClient.objects.filter(
         tenant=request.user.tenant,
@@ -207,10 +210,21 @@ def commission_refresh_sheet(request, pk):
     ).exclude(id__in=existing_review_ids).select_related('assigned_reviewer')
 
     entries = [
-        CommissionEntry(sheet=sheet, client=c, sales_rep=c.assigned_sales or request.user, amount=0)
+        CommissionEntry(
+            sheet=sheet, client=c,
+            sales_rep=c.assigned_sales or request.user,
+            accountant_rep=c.assigned_accountant,
+            reviewer_rep=c.assigned_review,
+            amount=0,
+        )
         for c in new_clients
     ] + [
-        CommissionEntry(sheet=sheet, review_client=rc, sales_rep=rc.assigned_reviewer or request.user, amount=0)
+        CommissionEntry(
+            sheet=sheet, review_client=rc,
+            sales_rep=rc.assigned_reviewer or request.user,
+            reviewer_rep=rc.assigned_reviewer,
+            amount=0,
+        )
         for rc in new_review_clients
     ]
     if entries:
@@ -366,9 +380,9 @@ def export_sheet_excel(request, pk):
         ws.append([
             entry.client_name,
             entry.client_company,
-            entry.sales_rep.get_full_name() or entry.sales_rep.username,
-            entry.client.assigned_accountant.get_full_name() if entry.client and entry.client.assigned_accountant else '—',
-            entry.client.assigned_review.get_full_name() if entry.client and entry.client.assigned_review else '—',
+            entry.sales_rep.get_full_name() or entry.sales_rep.username if entry.sales_rep else '—',
+            entry.accountant_rep.get_full_name() or entry.accountant_rep.username if entry.accountant_rep else '—',
+            entry.reviewer_rep.get_full_name() or entry.reviewer_rep.username if entry.reviewer_rep else '—',
             entry.amount,
             entry.commission_amount,
             entry.accountant_commission_amount,
@@ -414,9 +428,9 @@ def export_sheet_pdf(request, pk):
         rows.append([
             e.client_name,
             e.client_company,
-            e.sales_rep.get_full_name() or e.sales_rep.username,
-            e.client.assigned_accountant.get_full_name() if e.client and e.client.assigned_accountant else '—',
-            e.client.assigned_review.get_full_name() if e.client and e.client.assigned_review else '—',
+            e.sales_rep.get_full_name() or e.sales_rep.username if e.sales_rep else '—',
+            e.accountant_rep.get_full_name() or e.accountant_rep.username if e.accountant_rep else '—',
+            e.reviewer_rep.get_full_name() or e.reviewer_rep.username if e.reviewer_rep else '—',
             f"{e.amount:,.2f}",
             f"{e.commission_amount:,.2f}",
             f"{e.accountant_commission_amount:,.2f}",

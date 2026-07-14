@@ -25,8 +25,12 @@ class CommissionEntry(models.Model):
     sheet = models.ForeignKey(CommissionSheet, on_delete=models.CASCADE, related_name='entries')
     client = models.ForeignKey('clients.Client', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='العميل')
     review_client = models.ForeignKey('workflow.ReviewClient', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='عميل المراجعة')
-    sales_rep = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+    sales_rep = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
                                    related_name='commission_entries', verbose_name='المندوب')
+    accountant_rep = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                        related_name='accountant_commission_entries', verbose_name='المحاسب')
+    reviewer_rep = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                      related_name='reviewer_commission_entries', verbose_name='المراجع')
     is_confirmed = models.BooleanField(default=False, verbose_name='تم التأكيد ✓')
     entry_date = models.DateField(null=True, blank=True, verbose_name='تاريخ السطر')
     amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='المبلغ')
