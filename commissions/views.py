@@ -5,7 +5,7 @@ from django.db.models import Sum, Q
 from decimal import Decimal
 from .models import CommissionSheet, CommissionEntry, EntryCommissionRule
 from clients.models import Client
-from accounts.decorators import accountant_required, admin_required
+from accounts.decorators import admin_required
 from .forms import CommissionSheetForm
 
 

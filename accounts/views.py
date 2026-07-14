@@ -175,11 +175,11 @@ def profile_view(request):
                     'password_success': True,
                 })
 
-        elif action == 'whatsapp':
-            user.whatsapp_number = request.POST.get('whatsapp_number', '').strip()
-            user.callmebot_api_key = request.POST.get('callmebot_api_key', '').strip()
-            user.save(update_fields=['whatsapp_number', 'callmebot_api_key'])
-            messages.success(request, 'تم حفظ إعدادات الواتساب')
+        elif action == 'notifications':
+            user.telegram_chat_id = request.POST.get('telegram_chat_id', '').strip()
+            user.notification_email = request.POST.get('notification_email', '').strip()
+            user.save(update_fields=['telegram_chat_id', 'notification_email'])
+            messages.success(request, 'تم حفظ إعدادات التنبيهات')
             return redirect('profile')
 
     return render(request, 'accounts/profile.html', {
@@ -187,10 +187,6 @@ def profile_view(request):
         'password_form': password_form,
     })
 
-
-@login_required
-def whatsapp_setup(request):
-    return redirect('profile')
 
 
 @login_required

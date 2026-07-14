@@ -69,9 +69,10 @@ class User(AbstractUser):
     role         = models.CharField(max_length=20, choices=ROLE_CHOICES, default=ROLE_SALES)
     is_superadmin = models.BooleanField(default=False, verbose_name='سوبر أدمن')
     phone = models.CharField(max_length=20, blank=True)
-    whatsapp_number = models.CharField(max_length=20, blank=True, verbose_name='رقم الواتساب',
-                                        help_text='مثال: 966501234567 (بدون + أو 00)')
-    callmebot_api_key = models.CharField(max_length=100, blank=True, verbose_name='CallMeBot API Key')
+    telegram_chat_id = models.CharField(max_length=50, blank=True, verbose_name='Telegram Chat ID',
+                                         help_text='احصل عليه من بوت @userinfobot')
+    notification_email = models.EmailField(blank=True, verbose_name='إيميل التنبيهات',
+                                            help_text='اتركه فارغاً لاستخدام بريدك الرئيسي')
 
     def __str__(self):
         return f"{self.get_full_name() or self.username} ({self.get_role_display()})"

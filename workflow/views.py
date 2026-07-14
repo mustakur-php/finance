@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils import timezone
+from django.core.paginator import Paginator
 from .models import ReviewClient, WorkflowStage
 from accounts.decorators import admin_required
 
@@ -52,8 +53,10 @@ def workflow_list(request):
     if status_filter:
         clients = clients.filter(stages__status=status_filter)
 
+    paginator = Paginator(clients.distinct().order_by('-created_at'), 10)
+    page_obj = paginator.get_page(request.GET.get('page'))
     return render(request, 'workflow/list.html', {
-        'clients': clients.distinct(),
+        'clients': page_obj, 'page_obj': page_obj,
         'q': q,
         'stage_filter': stage_filter,
         'status_filter': status_filter,

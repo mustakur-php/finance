@@ -6,7 +6,7 @@
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <div class="d-flex align-items-center gap-3">
-            <span><i class="bi bi-crosshair me-1"></i> العملاء المستهدفون ({{ page_obj.paginator.count }})</span>
+            <span><i class="bi bi-crosshair me-1"></i> العملاء المستهدفون ({{ total_count }})</span>
             {% if converted_count %}
             <a href="?converted={% if show_converted %}0{% else %}1{% endif %}" class="btn btn-sm {% if show_converted %}btn-warning{% else %}btn-outline-secondary{% endif %}">
                 <i class="bi bi-arrow-left-right me-1"></i>

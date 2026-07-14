@@ -49,7 +49,7 @@ def clients_list(request):
     filters = {'q': q, 'city': city, 'district': district, 'activity': activity, 'sales': sales_id, 'accountant': accountant_id}
     from .models import ClientCommissionRule
     commission_rules = {(r.client_id, r.department): r for r in ClientCommissionRule.objects.filter(client__tenant=request.user.tenant)}
-    paginator = Paginator(clients.order_by('-created_at'), 20)
+    paginator = Paginator(clients.order_by('-created_at'), 10)
     page_obj = paginator.get_page(request.GET.get('page'))
     return render(request, 'clients/list.html', {
         'clients': page_obj, 'page_obj': page_obj, 'filters': filters,
@@ -87,9 +87,10 @@ def targeted_list(request):
     sales_users = []
     if request.user.is_admin:
         sales_users = UserModel.objects.filter(tenant=request.user.tenant, role=UserModel.ROLE_SALES, is_active=True)
+    total_count = Client.objects.filter(tenant=request.user.tenant, client_type=Client.TYPE_POTENTIAL, converted_status='').count()
     converted_count = Client.objects.filter(tenant=request.user.tenant, client_type=Client.TYPE_POTENTIAL).exclude(converted_status='').count()
     filters = {'q': q, 'city': city, 'district': district, 'activity': activity, 'sales': sales_id}
-    paginator = Paginator(clients.order_by('-created_at'), 20)
+    paginator = Paginator(clients.order_by('-created_at'), 10)
     page_obj = paginator.get_page(request.GET.get('page'))
     return render(request, 'clients/targeted_list.html', {
         'clients': page_obj, 'page_obj': page_obj, 'filters': filters,
@@ -97,6 +98,7 @@ def targeted_list(request):
         'sales_users': sales_users,
         'show_converted': show_converted,
         'converted_count': converted_count,
+        'total_count': total_count,
     })
 
 

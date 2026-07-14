@@ -43,16 +43,20 @@
                     </div>
                 </div>
                 <hr>
-                {# حالة الواتساب #}
-                {% if user.whatsapp_number and user.callmebot_api_key %}
+                {# حالة التنبيهات #}
+                {% if user.telegram_chat_id or user.notification_email %}
                 <div class="d-flex align-items-center gap-2 justify-content-center text-success small">
                     <i class="bi bi-check-circle-fill fs-5"></i>
-                    <span>تنبيهات الواتساب مفعّلة<br><small class="text-muted">{{ user.whatsapp_number }}</small></span>
+                    <div>
+                        <div>التنبيهات مفعّلة</div>
+                        {% if user.telegram_chat_id %}<small class="text-muted"><i class="bi bi-telegram me-1"></i>تيليقرام</small>{% endif %}
+                        {% if user.notification_email %}<small class="text-muted ms-2"><i class="bi bi-envelope me-1"></i>{{ user.notification_email }}</small>{% endif %}
+                    </div>
                 </div>
                 {% else %}
                 <div class="d-flex align-items-center gap-2 justify-content-center text-warning small">
                     <i class="bi bi-exclamation-circle-fill fs-5"></i>
-                    <span>تنبيهات الواتساب غير مفعّلة</span>
+                    <span>التنبيهات غير مفعّلة</span>
                 </div>
                 {% endif %}
             </div>
@@ -75,9 +79,9 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {% if active_tab == 'whatsapp' %}active{% endif %}"
-                   href="#whatsapp" data-bs-toggle="tab">
-                    <i class="bi bi-whatsapp me-1" style="color:#25D366"></i> الواتساب
+                <a class="nav-link {% if active_tab == 'notifications' %}active{% endif %}"
+                   href="#notifications" data-bs-toggle="tab">
+                    <i class="bi bi-bell me-1"></i> التنبيهات
                 </a>
             </li>
         </ul>
@@ -196,70 +200,69 @@
                 </div>
             </div>
 
-            {# ===== تبويب الواتساب ===== #}
-            <div class="tab-pane fade {% if active_tab == 'whatsapp' %}show active{% endif %}" id="whatsapp">
+            {# ===== تبويب التنبيهات ===== #}
+            <div class="tab-pane fade {% if active_tab == 'notifications' %}show active{% endif %}" id="notifications">
                 <div class="card">
                     <div class="card-header">
-                        <i class="bi bi-whatsapp me-1" style="color:#25D366"></i> إعداد تنبيهات الواتساب
+                        <i class="bi bi-bell me-1"></i> إعداد التنبيهات
                     </div>
                     <div class="card-body">
                         <div class="alert alert-info d-flex gap-2 mb-4">
                             <i class="bi bi-info-circle-fill flex-shrink-0 mt-1"></i>
                             <div>
-                                ستصلك رسائل واتساب تذكر بمواعيد الزيارات والأحداث قبل <strong>24 ساعة</strong> تلقائياً.
-                                يجب أن تفعّل الخدمة أولاً من خلال الخطوات أدناه.
+                                ستصلك تنبيهات تذكّرك بمواعيد الزيارات والأحداث قبل <strong>24 ساعة</strong> تلقائياً عبر تيليقرام أو الإيميل.
                             </div>
                         </div>
 
-                        <div class="row g-4">
-                            <div class="col-md-6">
-                                <form method="post">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="action" value="whatsapp">
-                                    <div class="mb-3">
-                                        <label class="form-label fw-semibold">رقم الواتساب</label>
-                                        <input type="text" name="whatsapp_number" class="form-control"
-                                               value="{{ user.whatsapp_number }}" placeholder="966501234567">
-                                        <div class="form-text">بدون + أو 00 — مثال: 966501234567</div>
-                                    </div>
-                                    <div class="mb-4">
-                                        <label class="form-label fw-semibold">CallMeBot API Key</label>
-                                        <input type="text" name="callmebot_api_key" class="form-control"
-                                               value="{{ user.callmebot_api_key }}" placeholder="1234567">
-                                        <div class="form-text">ستحصل عليه بعد إرسال رسالة التفعيل</div>
-                                    </div>
-                                    <button type="submit" class="btn btn-success w-100">
-                                        <i class="bi bi-save me-1"></i> حفظ إعدادات الواتساب
-                                    </button>
-                                </form>
-                            </div>
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="notifications">
+                            <div class="row g-4">
 
-                            <div class="col-md-6">
-                                <div class="card border-0 bg-light h-100">
-                                    <div class="card-body">
-                                        <h6 class="fw-bold mb-3"><i class="bi bi-list-ol me-1"></i> خطوات التفعيل</h6>
-                                        <ol class="mb-0 small">
-                                            <li class="mb-3">
-                                                افتح الواتساب وأضف هذا الرقم كجهة اتصال:
-                                                <div class="mt-1 p-2 bg-white rounded border text-center">
-                                                    <code class="fs-6">+34 623 78 95 80</code>
+                                <div class="col-md-6">
+                                    <div class="card border-0 bg-light h-100">
+                                        <div class="card-body">
+                                            <h6 class="fw-bold mb-3">
+                                                <i class="bi bi-telegram me-1" style="color:#229ED9"></i> تيليقرام
+                                            </h6>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold">Telegram Chat ID</label>
+                                                <input type="text" name="telegram_chat_id" class="form-control"
+                                                       value="{{ user.telegram_chat_id }}" placeholder="123456789">
+                                                <div class="form-text">
+                                                    افتح تيليقرام وأرسل أي رسالة لـ <strong>@userinfobot</strong> — سيعطيك الـ ID مباشرة
                                                 </div>
-                                            </li>
-                                            <li class="mb-3">
-                                                أرسل له هذه الرسالة بالضبط:
-                                                <div class="mt-1 p-2 bg-white rounded border">
-                                                    <code>I allow callmebot to send me messages</code>
-                                                </div>
-                                            </li>
-                                            <li class="mb-3">
-                                                سيردّ عليك برسالة فيها <strong>API Key</strong> — انسخه والصقه في الحقل
-                                            </li>
-                                            <li>احفظ الإعدادات</li>
-                                        </ol>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
+
+                                <div class="col-md-6">
+                                    <div class="card border-0 bg-light h-100">
+                                        <div class="card-body">
+                                            <h6 class="fw-bold mb-3">
+                                                <i class="bi bi-envelope me-1" style="color:#0d6efd"></i> البريد الإلكتروني
+                                            </h6>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold">إيميل التنبيهات</label>
+                                                <input type="email" name="notification_email" class="form-control"
+                                                       value="{{ user.notification_email }}" placeholder="{{ user.email|default:'example@gmail.com' }}">
+                                                <div class="form-text">
+                                                    اتركه فارغاً لاستخدام بريدك الرئيسي
+                                                    {% if user.email %}<strong>({{ user.email }})</strong>{% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-12">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-save me-1"></i> حفظ إعدادات التنبيهات
+                                    </button>
+                                </div>
                             </div>
-                        </div>
+                        </form>
                     </div>
                 </div>
             </div>

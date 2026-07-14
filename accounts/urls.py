@@ -10,5 +10,4 @@ urlpatterns = [
     path('users/<int:pk>/edit/', views.user_edit, name='user_edit'),
     path('users/<int:pk>/toggle/', views.user_toggle, name='user_toggle'),
     path('profile/', views.profile_view, name='profile'),
-    path('profile/whatsapp/', views.whatsapp_setup, name='whatsapp_setup'),
 ]
