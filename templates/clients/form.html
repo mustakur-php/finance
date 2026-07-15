@@ -79,6 +79,16 @@
                     <label class="form-label">ملاحظات</label>
                     {{ form.notes }}
                 </div>
+                {% if client_type == 'potential' %}
+                <div class="col-md-6">
+                    <label class="form-label">الرقم المميز</label>
+                    {{ form.distinguished_number }}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">الرقم السري</label>
+                    {{ form.secret_number }}
+                </div>
+                {% endif %}
                 {% if user.is_admin %}
                 <div class="col-12">
                     <div class="form-check form-switch mt-1">
