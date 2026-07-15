@@ -237,7 +237,40 @@ def client_convert(request, pk):
     client = get_object_or_404(Client, pk=pk, tenant=request.user.tenant, client_type=Client.TYPE_POTENTIAL)
     target = request.POST.get('target', 'actual')
 
-    if target == 'review':
+    if target == 'zatca':
+        from zatca.models import ZatcaClient
+        from accounts.models import User as UserModel
+        accountant_id = request.POST.get('accountant_id')
+        accountant = None
+        if accountant_id:
+            accountant = UserModel.objects.filter(pk=accountant_id, tenant=request.user.tenant, role=UserModel.ROLE_ACCOUNTANT).first()
+        zatca_client = ZatcaClient.objects.create(
+            tenant=client.tenant,
+            name=client.name,
+            company=client.company,
+            phone=client.phone,
+            email=client.email,
+            city=client.city,
+            district=client.district,
+            address=client.address,
+            responsible_person=client.responsible_person,
+            job_title=client.job_title,
+            notes=client.notes,
+            assigned_accountant=accountant,
+            created_by=request.user,
+        )
+        client.converted_status = 'zatca'
+        client.converted_at = timezone.now()
+        client.save(update_fields=['converted_status', 'converted_at'])
+        from audit_log.utils import log_action
+        from audit_log.models import AuditLog
+        log_action(request, AuditLog.ACTION_CREATE, obj=zatca_client)
+        log_action(request, AuditLog.ACTION_UPDATE, obj=client,
+                   changes={'تحويل': {'من': 'مستهدف', 'إلى': 'ZATCA'}})
+        messages.success(request, f'تم تحويل "{client.name}" إلى قسم ZATCA')
+        return redirect('zatca_detail', pk=zatca_client.pk)
+
+    elif target == 'review':
         from workflow.models import ReviewClient
         from workflow.views import _create_stages
         review_client = ReviewClient.objects.create(
@@ -354,7 +387,9 @@ def client_detail(request, pk):
                        model_name='ClientNote', object_repr=str(client))
             messages.success(request, 'تم إضافة الملاحظة')
         return redirect('client_detail', pk=pk)
-    return render(request, 'clients/detail.html', {'client': client})
+    from accounts.models import User as UserModel
+    accountant_users = UserModel.objects.filter(tenant=request.user.tenant, role=UserModel.ROLE_ACCOUNTANT, is_active=True)
+    return render(request, 'clients/detail.html', {'client': client, 'accountant_users': accountant_users})
 
 
 @login_required

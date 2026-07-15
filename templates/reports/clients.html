@@ -45,6 +45,7 @@
                 <div class="small mt-1">
                     <span class="badge bg-success">فعليون: {{ total_actual }}</span>
                     <span class="badge ms-1" style="background:#6a1b9a">مراجعة: {{ total_review }}</span>
+                    <span class="badge ms-1" style="background:#b45309">ZATCA: {{ total_zatca }}</span>
                 </div>
             </div>
         </div>
@@ -76,6 +77,33 @@
             </tr>
             {% empty %}
             <tr><td colspan="8" class="text-center text-muted py-4">لا يوجد عملاء فعليون</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- جدول عملاء ZATCA -->
+<div class="card mb-3">
+    <div class="card-header fw-semibold" style="background:#fef3c7"><i class="bi bi-building me-1" style="color:#b45309"></i> عملاء ZATCA ({{ total_zatca }})</div>
+    <div class="table-responsive">
+        <table class="table table-hover table-sm align-middle mb-0" style="font-size:0.85rem">
+            <thead class="table-dark">
+                <tr><th>الاسم</th><th>الشركة</th><th>المدينة</th><th>الجوال</th><th>المحاسب</th><th>الحالة</th><th>تاريخ الإضافة</th></tr>
+            </thead>
+            <tbody>
+            {% for c in zatca_clients %}
+            <tr>
+                <td><a href="{% url 'zatca_detail' c.pk %}" class="text-decoration-none fw-semibold">{{ c.name }}</a></td>
+                <td>{{ c.company|default:"—" }}</td>
+                <td>{{ c.city|default:"—" }}</td>
+                <td>{{ c.phone|default:"—" }}</td>
+                <td>{% if c.assigned_accountant %}{{ c.assigned_accountant.get_full_name|default:c.assigned_accountant.username }}{% else %}—{% endif %}</td>
+                <td>{% if c.status == 'completed' %}<span class="badge bg-success">مكتمل</span>{% else %}<span class="badge" style="background:#b45309">تحت الإجراء</span>{% endif %}</td>
+                <td>{{ c.created_at|date:"Y/m/d" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-center text-muted py-4">لا يوجد عملاء ZATCA</td></tr>
             {% endfor %}
             </tbody>
         </table>

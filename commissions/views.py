@@ -52,6 +52,12 @@ def commission_create(request):
                 is_commissionable=True,
             ).select_related('assigned_reviewer')
 
+            from zatca.models import ZatcaClient
+            zatca_clients = ZatcaClient.objects.filter(
+                tenant=request.user.tenant,
+                is_commissionable=True,
+            ).select_related('assigned_accountant')
+
             entries = []
             for client in actual_clients:
                 entries.append(CommissionEntry(
@@ -68,6 +74,13 @@ def commission_create(request):
                     review_client=rc,
                     sales_rep=rc.assigned_reviewer or request.user,
                     reviewer_rep=rc.assigned_reviewer,
+                    amount=0,
+                ))
+            for zc in zatca_clients:
+                entries.append(CommissionEntry(
+                    sheet=sheet,
+                    zatca_client=zc,
+                    accountant_rep=zc.assigned_accountant,
                     amount=0,
                 ))
             if entries:

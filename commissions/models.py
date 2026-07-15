@@ -25,6 +25,7 @@ class CommissionEntry(models.Model):
     sheet = models.ForeignKey(CommissionSheet, on_delete=models.CASCADE, related_name='entries')
     client = models.ForeignKey('clients.Client', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='العميل')
     review_client = models.ForeignKey('workflow.ReviewClient', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='عميل المراجعة')
+    zatca_client  = models.ForeignKey('zatca.ZatcaClient', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='عميل ZATCA')
     sales_rep = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
                                    related_name='commission_entries', verbose_name='المندوب')
     accountant_rep = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
@@ -59,7 +60,7 @@ class CommissionEntry(models.Model):
         self.review_commission_amount = self._calc(rules.get('review'), self.amount)
 
     def __str__(self):
-        name = self.client.name if self.client else (self.review_client.name if self.review_client else '—')
+        name = self.client.name if self.client else (self.review_client.name if self.review_client else (self.zatca_client.name if self.zatca_client else '—'))
         return f"{name} - {self.amount}"
 
     @property
@@ -68,6 +69,8 @@ class CommissionEntry(models.Model):
             return self.client.name
         if self.review_client:
             return self.review_client.name
+        if self.zatca_client:
+            return self.zatca_client.name
         return '—'
 
     @property
@@ -76,11 +79,17 @@ class CommissionEntry(models.Model):
             return self.client.company or ''
         if self.review_client:
             return self.review_client.company or ''
+        if self.zatca_client:
+            return self.zatca_client.company or ''
         return ''
 
     @property
     def entry_type(self):
-        return 'review' if self.review_client else 'client'
+        if self.review_client:
+            return 'review'
+        if self.zatca_client:
+            return 'zatca'
+        return 'client'
 
     class Meta:
         verbose_name = 'سطر عمولة'

@@ -76,6 +76,11 @@
             <i class="bi bi-diagram-3"></i> قسم المراجعة
         </a>
         {% endif %}
+        {% if user.is_admin or user.is_accountant %}
+        <a href="{% url 'zatca_list' %}" class="nav-link {% if 'zatca' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="bi bi-building"></i> قسم ZATCA
+        </a>
+        {% endif %}
         {% if user.is_admin %}
         <a href="{% url 'users_list' %}" class="nav-link {% if request.resolver_match.url_name == 'users_list' %}active{% endif %}">
             <i class="bi bi-person-gear"></i> المستخدمون

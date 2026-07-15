@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+{% block title %}{{ client.name }} — ZATCA{% endblock %}
+{% block page_title %}تفاصيل عميل ZATCA{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <a href="{% url 'zatca_list' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-right me-1"></i> رجوع</a>
+    <div class="d-flex gap-2">
+        {% if client.status == 'in_progress' and request.user.is_admin or client.status == 'in_progress' and request.user.is_accountant %}
+        <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#completeModal">
+            <i class="bi bi-check-circle me-1"></i> إكمال الملف
+        </button>
+        {% endif %}
+        {% if request.user.is_admin %}
+        <button class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal">
+            <i class="bi bi-trash me-1"></i> حذف
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- بيانات العميل -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-person me-1"></i> بيانات العميل</span>
+                {% if client.status == 'in_progress' %}
+                <span class="badge" style="background:#b45309">تحت الإجراء</span>
+                {% else %}
+                <span class="badge bg-success">مكتمل</span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="text-muted small">الاسم</div>
+                        <div class="fw-semibold">{{ client.name }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-muted small">الشركة</div>
+                        <div>{{ client.company|default:"—" }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-muted small">الجوال</div>
+                        <div>{{ client.phone|default:"—" }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-muted small">البريد الإلكتروني</div>
+                        <div>{{ client.email|default:"—" }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-muted small">المدينة</div>
+                        <div>{{ client.city|default:"—" }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-muted small">الحي</div>
+                        <div>{{ client.district|default:"—" }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-muted small">المسؤول</div>
+                        <div>{{ client.responsible_person|default:"—" }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-muted small">المسمى الوظيفي</div>
+                        <div>{{ client.job_title|default:"—" }}</div>
+                    </div>
+                    {% if client.notes %}
+                    <div class="col-12">
+                        <div class="text-muted small">ملاحظات</div>
+                        <div>{{ client.notes }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- الجانب الأيسر -->
+    <div class="col-md-4">
+        <div class="card mb-3">
+            <div class="card-header"><i class="bi bi-person-badge me-1"></i> المحاسب المسند</div>
+            <div class="card-body">
+                {% if client.assigned_accountant %}
+                <div class="fw-semibold">{{ client.assigned_accountant.get_full_name|default:client.assigned_accountant.username }}</div>
+                {% else %}
+                <span class="text-muted">لم يُسند بعد</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header"><i class="bi bi-file-earmark-text me-1"></i> تقرير الإنجاز</div>
+            <div class="card-body">
+                {% if client.report_file %}
+                <a href="{{ client.report_file.url }}" target="_blank" class="btn btn-outline-success btn-sm w-100">
+                    <i class="bi bi-download me-1"></i> تحميل التقرير
+                </a>
+                {% if client.completed_at %}
+                <div class="text-muted small mt-2">اكتمل في: {{ client.completed_at|date:"Y/m/d H:i" }}</div>
+                {% endif %}
+                {% else %}
+                <span class="text-muted small">لم يُرفع تقرير بعد</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><i class="bi bi-info-circle me-1"></i> معلومات</div>
+            <div class="card-body">
+                <div class="small text-muted">تاريخ الإضافة</div>
+                <div class="mb-2">{{ client.created_at|date:"Y/m/d" }}</div>
+                {% if request.user.is_admin %}
+                <div class="small text-muted">العمولة</div>
+                <div class="form-check form-switch mt-1">
+                    <input class="form-check-input commission-toggle" type="checkbox" role="switch"
+                           data-url="{% url 'zatca_toggle_commissionable' client.pk %}"
+                           {% if client.is_commissionable %}checked{% endif %}>
+                    <label class="form-check-label small">خاضع للعمولة</label>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal إكمال الملف -->
+{% if client.status == 'in_progress' %}
+<div class="modal fade" id="completeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'zatca_complete' client.pk %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-check-circle me-2 text-success"></i> إكمال ملف العميل</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small">سيتم تغيير حالة <strong>{{ client.name }}</strong> إلى مكتمل.</p>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">تقرير الإنجاز <span class="text-danger">*</span></label>
+                        <input type="file" name="report_file" class="form-control" required
+                               accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png">
+                        <div class="form-text">PDF, Word, Excel, أو صورة — إلزامي</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-success btn-sm">تأكيد الإكمال</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Modal حذف -->
+{% if request.user.is_admin %}
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'zatca_delete' client.pk %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title text-danger"><i class="bi bi-trash me-2"></i> حذف العميل</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>هل أنت متأكد من حذف <strong>{{ client.name }}</strong>؟ لا يمكن التراجع.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-danger btn-sm">حذف</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

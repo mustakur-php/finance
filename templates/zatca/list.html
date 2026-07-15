@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% block title %}قسم ZATCA{% endblock %}
+{% block page_title %}قسم ZATCA{% endblock %}
+
+{% block content %}
+<!-- ملخص -->
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm text-center p-3">
+            <div class="fs-3 fw-bold" style="color:#b45309">{{ total_in_progress }}</div>
+            <div class="small text-muted">تحت الإجراء</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm text-center p-3">
+            <div class="fs-3 fw-bold text-success">{{ total_completed }}</div>
+            <div class="small text-muted">مكتملة</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm text-center p-3">
+            <div class="fs-3 fw-bold text-primary">{{ page_obj.paginator.count }}</div>
+            <div class="small text-muted">الإجمالي</div>
+        </div>
+    </div>
+</div>
+
+<!-- فلاتر -->
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form method="get" class="d-flex gap-2 flex-wrap align-items-center">
+            <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="الاسم أو الشركة..." style="width:200px">
+            <select name="status" class="form-select form-select-sm" style="width:auto">
+                <option value="">كل الحالات</option>
+                {% for code, label in status_choices %}
+                <option value="{{ code }}" {% if status_filter == code %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+            <button class="btn btn-outline-secondary btn-sm">بحث</button>
+            {% if q or status_filter %}
+            <a href="{% url 'zatca_list' %}" class="btn btn-outline-secondary btn-sm">إلغاء</a>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size:0.875rem">
+            <thead class="table-dark">
+                <tr>
+                    <th>العميل</th>
+                    <th>الشركة</th>
+                    <th>الجوال</th>
+                    <th>المحاسب</th>
+                    <th>الحالة</th>
+                    <th>تاريخ الإضافة</th>
+                    {% if request.user.is_admin %}<th class="text-center">عمولة</th>{% endif %}
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for client in clients %}
+            <tr>
+                <td class="fw-semibold">
+                    <a href="{% url 'zatca_detail' client.pk %}" class="text-decoration-none">{{ client.name }}</a>
+                </td>
+                <td class="text-muted">{{ client.company|default:"—" }}</td>
+                <td>{{ client.phone|default:"—" }}</td>
+                <td>
+                    {% if client.assigned_accountant %}
+                    <span class="badge bg-primary">{{ client.assigned_accountant.get_full_name|default:client.assigned_accountant.username }}</span>
+                    {% else %}<span class="text-muted">—</span>{% endif %}
+                </td>
+                <td>
+                    {% if client.status == 'in_progress' %}
+                    <span class="badge" style="background:#b45309">تحت الإجراء</span>
+                    {% else %}
+                    <span class="badge bg-success">مكتمل</span>
+                    {% endif %}
+                </td>
+                <td class="text-muted small">{{ client.created_at|date:"Y/m/d" }}</td>
+                {% if request.user.is_admin %}
+                <td class="text-center">
+                    <div class="form-check form-switch d-flex justify-content-center m-0">
+                        <input class="form-check-input commission-toggle" type="checkbox" role="switch"
+                               data-url="{% url 'zatca_toggle_commissionable' client.pk %}"
+                               {% if client.is_commissionable %}checked{% endif %}>
+                    </div>
+                </td>
+                {% endif %}
+                <td>
+                    <a href="{% url 'zatca_detail' client.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" class="text-center text-muted py-5">
+                    <i class="bi bi-inbox fs-2 d-block mb-2 opacity-50"></i>
+                    لا يوجد عملاء في قسم ZATCA
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if page_obj.has_other_pages %}
+    <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top">
+        <small class="text-muted">عرض {{ page_obj.start_index }}–{{ page_obj.end_index }} من {{ page_obj.paginator.count }}</small>
+        <nav>
+            <ul class="pagination pagination-sm mb-0">
+                {% if page_obj.has_previous %}
+                <li class="page-item"><a class="page-link" href="?q={{ q }}&status={{ status_filter }}&page={{ page_obj.previous_page_number }}">‹</a></li>
+                {% endif %}
+                {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <li class="page-item"><a class="page-link" href="?q={{ q }}&status={{ status_filter }}&page={{ num }}">{{ num }}</a></li>
+                {% endif %}
+                {% endfor %}
+                {% if page_obj.has_next %}
+                <li class="page-item"><a class="page-link" href="?q={{ q }}&status={{ status_filter }}&page={{ page_obj.next_page_number }}">›</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

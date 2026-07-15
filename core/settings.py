@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     'calendar_app',
     'audit_log',
     'workflow',
+    'zatca',
     'reports',
     'superadmin_panel',
 ]

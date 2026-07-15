@@ -126,6 +126,16 @@ def report_clients(request):
     if city_filter:
         review_qs = review_qs.filter(city=city_filter)
 
+    # عملاء ZATCA
+    from zatca.models import ZatcaClient
+    zatca_qs = ZatcaClient.objects.filter(tenant=tenant)
+    if date_from:
+        zatca_qs = zatca_qs.filter(created_at__date__gte=date_from)
+    if date_to:
+        zatca_qs = zatca_qs.filter(created_at__date__lte=date_to)
+    if city_filter:
+        zatca_qs = zatca_qs.filter(city=city_filter)
+
     by_city     = qs.values('city').annotate(count=Count('id')).order_by('-count')
     by_activity = qs.values('activity__name').annotate(count=Count('id')).order_by('-count')
     by_sales    = qs.values('assigned_sales__first_name','assigned_sales__last_name','assigned_sales__username').annotate(count=Count('id')).order_by('-count')
@@ -137,9 +147,11 @@ def report_clients(request):
     return render(request, 'reports/clients.html', {
         'clients': qs.select_related('assigned_sales','assigned_accountant','activity'),
         'review_clients': review_qs.select_related('assigned_reviewer'),
-        'total': qs.count() + review_qs.count(),
+        'zatca_clients': zatca_qs.select_related('assigned_accountant'),
+        'total': qs.count() + review_qs.count() + zatca_qs.count(),
         'total_actual': qs.count(),
         'total_review': review_qs.count(),
+        'total_zatca': zatca_qs.count(),
         'by_city': by_city,
         'by_activity': by_activity,
         'by_sales': by_sales,
@@ -405,6 +417,25 @@ def export_clients_excel(request):
             str(c.created_at.date()) if c.created_at else '',
         ])
 
+    from zatca.models import ZatcaClient
+    zatca_qs2 = ZatcaClient.objects.filter(tenant=tenant).select_related('assigned_accountant')
+    if date_from:
+        zatca_qs2 = zatca_qs2.filter(created_at__date__gte=date_from)
+    if date_to:
+        zatca_qs2 = zatca_qs2.filter(created_at__date__lte=date_to)
+    if city_filter:
+        zatca_qs2 = zatca_qs2.filter(city=city_filter)
+
+    ws3 = wb.create_sheet(title='ZATCA')
+    _style_header(ws3, ['الاسم','الشركة','المدينة','الجوال','المحاسب','الحالة','تاريخ الإضافة'], fill_color='b45309')
+    for c in zatca_qs2:
+        ws3.append([
+            c.name, c.company, c.city, c.phone,
+            c.assigned_accountant.get_full_name() if c.assigned_accountant else '',
+            c.get_status_display(),
+            str(c.created_at.date()) if c.created_at else '',
+        ])
+
     response = _make_excel_response('clients.xlsx')
     wb.save(response)
     return response
@@ -602,6 +633,25 @@ def export_clients_pdf(request):
             'مراجعة',
             '—', '—',
             c.assigned_reviewer.get_full_name() if c.assigned_reviewer else '—',
+            str(c.created_at.date()) if c.created_at else '',
+        ])
+
+    from zatca.models import ZatcaClient
+    zatca_qs = ZatcaClient.objects.filter(tenant=tenant).select_related('assigned_accountant')
+    if date_from:
+        zatca_qs = zatca_qs.filter(created_at__date__gte=date_from)
+    if date_to:
+        zatca_qs = zatca_qs.filter(created_at__date__lte=date_to)
+    if city_filter:
+        zatca_qs = zatca_qs.filter(city=city_filter)
+
+    for c in zatca_qs:
+        rows.append([
+            c.name or '', c.company or '', c.city or '', c.phone or '',
+            'ZATCA',
+            '—',
+            c.assigned_accountant.get_full_name() if c.assigned_accountant else '—',
+            '—',
             str(c.created_at.date()) if c.created_at else '',
         ])
     return _render_pdf('تقرير العملاء', headers, rows, 'clients.pdf', username)

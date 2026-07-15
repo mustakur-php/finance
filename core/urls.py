@@ -14,6 +14,7 @@ urlpatterns = [
     path('calendar/', include('calendar_app.urls')),
     path('audit/', include('audit_log.urls')),
     path('workflow/', include('workflow.urls')),
+    path('zatca/', include('zatca.urls')),
     path('reports/', include('reports.urls')),
     path('mustafa/', include('superadmin_panel.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
