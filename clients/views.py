@@ -18,6 +18,19 @@ def get_tenant_clients(user, client_type=Client.TYPE_ACTUAL):
     return qs
 
 
+def can_access_client(user, client):
+    """يتحقق أن للمستخدم صلاحية الوصول لعميل محدد حسب دوره."""
+    if user.is_admin:
+        return True
+    if user.is_sales:
+        return client.assigned_sales_id == user.id
+    if user.is_accountant:
+        return client.assigned_accountant_id == user.id
+    if user.is_review:
+        return client.assigned_sales_id == user.id or client.created_by_id == user.id
+    return False
+
+
 @login_required
 def clients_list(request):
     from accounts.models import User as UserModel
@@ -357,6 +370,8 @@ def toggle_commissionable(request, pk):
     if request.method != 'POST':
         return HttpResponseNotAllowed(['POST'])
     client = get_object_or_404(Client, pk=pk, tenant=request.user.tenant)
+    if not can_access_client(request.user, client):
+        return JsonResponse({'status': 'forbidden'}, status=403)
     client.is_commissionable = not client.is_commissionable
     client.save(update_fields=['is_commissionable'])
     return JsonResponse({'status': 'ok', 'is_commissionable': client.is_commissionable})
@@ -366,21 +381,17 @@ def toggle_commissionable(request, pk):
 def client_detail(request, pk):
     from .models import ClientNote, ClientAttachment
     client = get_object_or_404(Client, pk=pk, tenant=request.user.tenant)
+    if not can_access_client(request.user, client):
+        messages.error(request, 'ليس لديك صلاحية الوصول لهذا العميل')
+        return redirect('clients_list')
     if request.method == 'POST':
         action = request.POST.get('action')
         if action == 'upload' and request.FILES.get('file'):
             f = request.FILES['file']
-            allowed_types = ['application/pdf', 'image/jpeg', 'image/png', 'image/gif',
-                             'application/msword',
-                             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                             'application/vnd.ms-excel',
-                             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
-            max_size = 10 * 1024 * 1024  # 10 MB
-            if f.content_type not in allowed_types:
-                messages.error(request, 'نوع الملف غير مسموح. المسموح: PDF, صور, Word, Excel')
-                return redirect('client_detail', pk=pk)
-            if f.size > max_size:
-                messages.error(request, 'حجم الملف يتجاوز الحد المسموح (10 MB)')
+            from core.uploads import validate_upload
+            ok, err = validate_upload(f)
+            if not ok:
+                messages.error(request, err)
                 return redirect('client_detail', pk=pk)
             att = ClientAttachment.objects.create(client=client, file=f, name=f.name, uploaded_by=request.user)
             from audit_log.utils import log_action
@@ -423,6 +434,9 @@ def attachment_delete(request, pk):
 def client_edit(request, pk):
     from .forms import ClientForm
     client = get_object_or_404(Client, pk=pk, tenant=request.user.tenant)
+    if not can_access_client(request.user, client):
+        messages.error(request, 'ليس لديك صلاحية تعديل هذا العميل')
+        return redirect('clients_list')
     form = ClientForm(request.POST or None, instance=client, user=request.user)
     if request.method == 'POST' and form.is_valid():
         form.save()

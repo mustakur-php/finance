@@ -35,8 +35,27 @@ class UserForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        if not self.instance.pk and not cleaned_data.get('password'):
+        password = cleaned_data.get('password')
+
+        if not self.instance.pk and not password:
             self.add_error('password', 'كلمة المرور مطلوبة عند إنشاء مستخدم جديد')
+
+        # التحقق من قوة كلمة المرور عند إدخالها
+        if password:
+            try:
+                validate_password(password, self.instance)
+            except forms.ValidationError as e:
+                self.add_error('password', list(e.messages))
+
+        # التحقق من حد المستخدمين عند إنشاء مستخدم جديد
+        if not self.instance.pk and self.tenant and self.tenant.max_users:
+            current = User.objects.filter(tenant=self.tenant).count()
+            if current >= self.tenant.max_users:
+                raise forms.ValidationError(
+                    f'وصلت للحد الأقصى للمستخدمين ({self.tenant.max_users}). '
+                    'يرجى ترقية الاشتراك لإضافة المزيد.'
+                )
+
         return cleaned_data
 
 

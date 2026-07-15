@@ -5,19 +5,25 @@
 {% block content %}
 <!-- ملخص -->
 <div class="row g-3 mb-3">
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card border-0 shadow-sm text-center p-3">
-            <div class="fs-3 fw-bold" style="color:#b45309">{{ total_in_progress }}</div>
-            <div class="small text-muted">تحت الإجراء</div>
+            <div class="fs-3 fw-bold" style="color:#b45309">{{ total_active }}</div>
+            <div class="small text-muted">دورة نشطة</div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card border-0 shadow-sm text-center p-3">
-            <div class="fs-3 fw-bold text-success">{{ total_completed }}</div>
-            <div class="small text-muted">مكتملة</div>
+            <div class="fs-3 fw-bold text-success">{{ total_idle }}</div>
+            <div class="small text-muted">بدون دورة نشطة</div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center p-3">
+            <div class="fs-3 fw-bold text-secondary">{{ total_new }}</div>
+            <div class="small text-muted">لم تبدأ</div>
+        </div>
+    </div>
+    <div class="col-md-3">
         <div class="card border-0 shadow-sm text-center p-3">
             <div class="fs-3 fw-bold text-primary">{{ page_obj.paginator.count }}</div>
             <div class="small text-muted">الإجمالي</div>
@@ -32,9 +38,9 @@
             <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="الاسم أو الشركة..." style="width:200px">
             <select name="status" class="form-select form-select-sm" style="width:auto">
                 <option value="">كل الحالات</option>
-                {% for code, label in status_choices %}
-                <option value="{{ code }}" {% if status_filter == code %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
+                <option value="active" {% if status_filter == 'active' %}selected{% endif %}>دورة نشطة</option>
+                <option value="idle"   {% if status_filter == 'idle' %}selected{% endif %}>بدون دورة نشطة</option>
+                <option value="new"    {% if status_filter == 'new' %}selected{% endif %}>لم تبدأ</option>
             </select>
             <button class="btn btn-outline-secondary btn-sm">بحث</button>
             {% if q or status_filter %}
@@ -75,8 +81,10 @@
                 <td>
                     {% if client.has_active_session %}
                     <span class="badge" style="background:#b45309">دورة نشطة</span>
+                    {% elif client.has_any_session %}
+                    <span class="badge bg-success">بدون دورة نشطة</span>
                     {% else %}
-                    <span class="badge bg-secondary">لا توجد دورة نشطة</span>
+                    <span class="badge bg-secondary">لم تبدأ</span>
                     {% endif %}
                 </td>
                 <td class="text-muted small">{{ client.created_at|date:"Y/m/d" }}</td>

@@ -27,14 +27,3 @@ def log_action(request, action, obj=None, changes=None, model_name='', object_re
         )
     except Exception:
         pass
-
-
-def diff_fields(old_obj, new_obj, fields):
-    """يقارن قيم الحقول قبل وبعد ويرجع dict بالتغييرات فقط"""
-    changes = {}
-    for field in fields:
-        old_val = str(getattr(old_obj, field, '') or '')
-        new_val = str(getattr(new_obj, field, '') or '')
-        if old_val != new_val:
-            changes[field] = {'من': old_val, 'إلى': new_val}
-    return changes

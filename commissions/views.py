@@ -52,11 +52,16 @@ def commission_create(request):
                 is_commissionable=True,
             ).select_related('assigned_reviewer')
 
-            from zatca.models import ZatcaClient
-            zatca_clients = ZatcaClient.objects.filter(
-                tenant=request.user.tenant,
-                is_commissionable=True,
-            ).select_related('assigned_accountant')
+            from zatca.models import ZatcaSession
+            # عمولات ZATCA مبنية على الدورات المكتملة غير المضافة لأي شيت
+            used_session_ids = CommissionEntry.objects.filter(
+                sheet__tenant=request.user.tenant, zatca_session__isnull=False
+            ).values_list('zatca_session_id', flat=True)
+            zatca_sessions = ZatcaSession.objects.filter(
+                client__tenant=request.user.tenant,
+                client__is_commissionable=True,
+                status=ZatcaSession.STATUS_COMPLETED,
+            ).exclude(id__in=used_session_ids).select_related('client', 'client__assigned_accountant')
 
             entries = []
             for client in actual_clients:
@@ -76,11 +81,12 @@ def commission_create(request):
                     reviewer_rep=rc.assigned_reviewer,
                     amount=0,
                 ))
-            for zc in zatca_clients:
+            for session in zatca_sessions:
                 entries.append(CommissionEntry(
                     sheet=sheet,
-                    zatca_client=zc,
-                    accountant_rep=zc.assigned_accountant,
+                    zatca_client=session.client,
+                    zatca_session=session,
+                    accountant_rep=session.client.assigned_accountant,
                     amount=0,
                 ))
             if entries:
@@ -222,6 +228,16 @@ def commission_refresh_sheet(request, pk):
         is_commissionable=True,
     ).exclude(id__in=existing_review_ids).select_related('assigned_reviewer')
 
+    from zatca.models import ZatcaSession
+    used_session_ids = CommissionEntry.objects.filter(
+        sheet__tenant=request.user.tenant, zatca_session__isnull=False
+    ).values_list('zatca_session_id', flat=True)
+    new_sessions = ZatcaSession.objects.filter(
+        client__tenant=request.user.tenant,
+        client__is_commissionable=True,
+        status=ZatcaSession.STATUS_COMPLETED,
+    ).exclude(id__in=used_session_ids).select_related('client', 'client__assigned_accountant')
+
     entries = [
         CommissionEntry(
             sheet=sheet, client=c,
@@ -239,6 +255,13 @@ def commission_refresh_sheet(request, pk):
             amount=0,
         )
         for rc in new_review_clients
+    ] + [
+        CommissionEntry(
+            sheet=sheet, zatca_client=s.client, zatca_session=s,
+            accountant_rep=s.client.assigned_accountant,
+            amount=0,
+        )
+        for s in new_sessions
     ]
     if entries:
         CommissionEntry.objects.bulk_create(entries)

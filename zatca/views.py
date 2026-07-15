@@ -4,12 +4,20 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from .models import ZatcaClient, ZatcaSession
 from accounts.decorators import admin_required
+from core.uploads import validate_upload
 
 
 def _log(request, action, **kwargs):
     from audit_log.utils import log_action
     from audit_log.models import AuditLog
     log_action(request, action, **kwargs)
+
+
+def _can_access_zatca(user, client):
+    """المحاسب يتصرف فقط بعملائه المسندين؛ الأدمن بالجميع."""
+    if user.is_admin:
+        return True
+    return user.is_accountant and client.assigned_accountant_id == user.id
 
 
 @login_required
@@ -25,19 +33,26 @@ def zatca_list(request):
     active_subq = ZatcaSession.objects.filter(
         client=OuterRef('pk'), status=ZatcaSession.STATUS_IN_PROGRESS
     )
-    qs = qs.annotate(has_active_session=Exists(active_subq))
+    any_subq = ZatcaSession.objects.filter(client=OuterRef('pk'))
+    qs = qs.annotate(
+        has_active_session=Exists(active_subq),
+        has_any_session=Exists(any_subq),
+    )
 
     status_filter = request.GET.get('status', '')
     q = request.GET.get('q', '').strip()
-    if status_filter == 'in_progress':
+    if status_filter == 'active':
         qs = qs.filter(has_active_session=True)
-    elif status_filter == 'completed':
-        qs = qs.filter(has_active_session=False)
+    elif status_filter == 'idle':
+        qs = qs.filter(has_active_session=False, has_any_session=True)
+    elif status_filter == 'new':
+        qs = qs.filter(has_any_session=False)
     if q:
         qs = qs.filter(Q(name__icontains=q) | Q(company__icontains=q))
 
-    total_in_progress = qs.filter(has_active_session=True).count()
-    total_completed   = qs.filter(has_active_session=False).count()
+    total_active = qs.filter(has_active_session=True).count()
+    total_idle   = qs.filter(has_active_session=False, has_any_session=True).count()
+    total_new    = qs.filter(has_any_session=False).count()
 
     paginator = Paginator(qs.select_related('assigned_accountant'), 10)
     page_obj = paginator.get_page(request.GET.get('page'))
@@ -46,9 +61,9 @@ def zatca_list(request):
         'page_obj': page_obj,
         'status_filter': status_filter,
         'q': q,
-        'status_choices': ZatcaClient.STATUS_CHOICES,
-        'total_in_progress': total_in_progress,
-        'total_completed': total_completed,
+        'total_active': total_active,
+        'total_idle': total_idle,
+        'total_new': total_new,
     })
 
 
@@ -71,36 +86,6 @@ def zatca_detail(request, pk):
         'active_session': active_session,
         'next_start': next_start,
     })
-
-
-@login_required
-def zatca_complete(request, pk):
-    if not (request.user.is_admin or request.user.is_accountant):
-        return redirect('dashboard')
-    if request.method != 'POST':
-        return redirect('zatca_detail', pk=pk)
-
-    client = get_object_or_404(ZatcaClient, pk=pk, tenant=request.user.tenant)
-    if request.user.is_accountant and not request.user.is_admin:
-        if client.assigned_accountant != request.user:
-            messages.error(request, 'ليس لديك صلاحية')
-            return redirect('zatca_list')
-
-    report = request.FILES.get('report_file')
-    if not report:
-        messages.error(request, 'يجب رفع تقرير الإنجاز لإكمال العميل')
-        return redirect('zatca_detail', pk=pk)
-
-    from django.utils import timezone
-    client.status = ZatcaClient.STATUS_COMPLETED
-    client.report_file = report
-    client.completed_at = timezone.now()
-    client.save()
-    from audit_log.models import AuditLog
-    _log(request, AuditLog.ACTION_UPDATE, obj=client,
-         changes={'الحالة': {'من': 'تحت الإجراء', 'إلى': 'مكتمل'}})
-    messages.success(request, f'تم إكمال ملف "{client.name}" بنجاح')
-    return redirect('zatca_detail', pk=pk)
 
 
 @login_required
@@ -174,6 +159,9 @@ def zatca_session_create(request, pk):
     if not (request.user.is_admin or request.user.is_accountant):
         return redirect('dashboard')
     client = get_object_or_404(ZatcaClient, pk=pk, tenant=request.user.tenant)
+    if not _can_access_zatca(request.user, client):
+        messages.error(request, 'ليس لديك صلاحية على هذا العميل')
+        return redirect('zatca_list')
     if request.method != 'POST':
         return redirect('zatca_detail', pk=pk)
 
@@ -203,12 +191,16 @@ def zatca_session_complete(request, session_pk):
 
     session = get_object_or_404(ZatcaSession, pk=session_pk)
     client = session.client
-    if client.tenant != request.user.tenant:
+    if client.tenant != request.user.tenant or not _can_access_zatca(request.user, client):
         return redirect('zatca_list')
 
     report = request.FILES.get('report_file')
     if not report:
         messages.error(request, 'يجب رفع تقرير الدورة لإكمالها')
+        return redirect('zatca_detail', pk=client.pk)
+    ok, err = validate_upload(report)
+    if not ok:
+        messages.error(request, err)
         return redirect('zatca_detail', pk=client.pk)
 
     from django.utils import timezone
@@ -223,20 +215,8 @@ def zatca_session_complete(request, session_pk):
     log_action(request, AuditLog.ACTION_UPDATE, obj=session,
                changes={'الحالة': {'من': 'تحت الإجراء', 'إلى': 'مكتملة'}})
 
-    # إضافة الدورة لشيت العمولات إذا كان العميل خاضعاً للعمولة
-    if client.is_commissionable:
-        from commissions.models import CommissionSheet, CommissionEntry
-        sheet = CommissionSheet.objects.filter(tenant=client.tenant).order_by('-created_at').first()
-        if sheet:
-            CommissionEntry.objects.create(
-                sheet=sheet,
-                zatca_client=client,
-                zatca_session=session,
-                accountant_rep=client.assigned_accountant,
-                amount=0,
-            )
-
-    messages.success(request, f'تم إكمال الدورة بنجاح')
+    # عمولة الدورة تُسحب تلقائياً عند إنشاء/تحديث شيت العمولات إذا كان العميل خاضعاً للعمولة
+    messages.success(request, 'تم إكمال الدورة بنجاح')
     return redirect('zatca_detail', pk=client.pk)
 
 
