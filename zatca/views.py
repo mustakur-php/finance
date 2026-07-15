@@ -85,6 +85,37 @@ def zatca_complete(request, pk):
 
 
 @login_required
+def zatca_edit(request, pk):
+    if not (request.user.is_admin or request.user.is_accountant):
+        return redirect('dashboard')
+    client = get_object_or_404(ZatcaClient, pk=pk, tenant=request.user.tenant)
+    if request.user.is_accountant and not request.user.is_admin:
+        if client.assigned_accountant != request.user:
+            messages.error(request, 'ليس لديك صلاحية تعديل هذا العميل')
+            return redirect('zatca_list')
+    if request.method == 'POST':
+        client.name               = request.POST.get('name', '').strip() or client.name
+        client.company            = request.POST.get('company', '').strip()
+        client.phone              = request.POST.get('phone', '').strip()
+        client.email              = request.POST.get('email', '').strip()
+        client.city               = request.POST.get('city', '').strip()
+        client.district           = request.POST.get('district', '').strip()
+        client.address            = request.POST.get('address', '').strip()
+        client.responsible_person = request.POST.get('responsible_person', '').strip()
+        client.job_title          = request.POST.get('job_title', '').strip()
+        client.notes              = request.POST.get('notes', '').strip()
+        client.distinguished_number = request.POST.get('distinguished_number', '').strip()
+        client.secret_number      = request.POST.get('secret_number', '').strip()
+        client.save()
+        from audit_log.utils import log_action
+        from audit_log.models import AuditLog
+        log_action(request, AuditLog.ACTION_UPDATE, obj=client)
+        messages.success(request, 'تم تحديث بيانات العميل بنجاح')
+        return redirect('zatca_detail', pk=pk)
+    return render(request, 'zatca/client_edit.html', {'client': client})
+
+
+@login_required
 @admin_required
 def zatca_delete(request, pk):
     if request.method != 'POST':

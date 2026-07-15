@@ -230,6 +230,8 @@ def workflow_client_edit(request, pk):
         client.responsible_person = request.POST.get('responsible_person', '').strip()
         client.job_title          = request.POST.get('job_title', '').strip()
         client.notes              = request.POST.get('notes', '').strip()
+        client.distinguished_number = request.POST.get('distinguished_number', '').strip()
+        client.secret_number      = request.POST.get('secret_number', '').strip()
         client.save()
         from audit_log.utils import log_action
         from audit_log.models import AuditLog
