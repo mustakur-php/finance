@@ -86,12 +86,14 @@ def targeted_list(request):
         sales_users = UserModel.objects.filter(tenant=request.user.tenant, role=UserModel.ROLE_SALES, is_active=True)
     total_count = Client.objects.filter(tenant=request.user.tenant, client_type=Client.TYPE_POTENTIAL, converted_status='').count()
     filters = {'q': q, 'city': city, 'district': district, 'activity': activity, 'sales': sales_id}
+    accountant_users = UserModel.objects.filter(tenant=request.user.tenant, role=UserModel.ROLE_ACCOUNTANT, is_active=True)
     paginator = Paginator(clients.order_by('-created_at'), 10)
     page_obj = paginator.get_page(request.GET.get('page'))
     return render(request, 'clients/targeted_list.html', {
         'clients': page_obj, 'page_obj': page_obj, 'filters': filters,
         'activities': activities, 'cities': cities,
         'sales_users': sales_users,
+        'accountant_users': accountant_users,
         'total_count': total_count,
     })
 

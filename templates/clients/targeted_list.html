@@ -133,6 +133,13 @@
                                             </button>
                                         </form>
                                     </li>
+                                    <li>
+                                        <button type="button" class="dropdown-item"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#zatcaModal{{ client.pk }}">
+                                            <i class="bi bi-building me-2" style="color:#b45309"></i> ZATCA
+                                        </button>
+                                    </li>
                                 </ul>
                             </div>
                         </div>
@@ -178,6 +185,38 @@
     {% endif %}
     </div>
 </div>
+
+<!-- مودالات تحويل إلى ZATCA -->
+{% for client in clients %}
+<div class="modal fade" id="zatcaModal{{ client.pk }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" action="{% url 'client_convert' client.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="target" value="zatca">
+                <div class="modal-header">
+                    <h6 class="modal-title"><i class="bi bi-building me-2" style="color:#b45309"></i> تحويل إلى ZATCA</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">سيتم نقل <strong>{{ client.name }}</strong> إلى قسم ZATCA.</p>
+                    <label class="form-label fw-semibold">المحاسب المسند</label>
+                    <select name="accountant_id" class="form-select form-select-sm">
+                        <option value="">— اختر محاسباً —</option>
+                        {% for u in accountant_users %}
+                        <option value="{{ u.pk }}">{{ u.get_full_name|default:u.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-sm text-white" style="background:#b45309">تأكيد التحويل</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
 
 <!-- مودال الاستيراد -->
 <div class="modal fade" id="importModal" tabindex="-1">
