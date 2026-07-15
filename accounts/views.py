@@ -54,7 +54,13 @@ def dashboard_view(request):
     context['today_events'] = events_qs.order_by('start_datetime')
 
     if user.is_admin:
-        context['total_clients'] = user.tenant.clients.filter(is_active=True).count() if user.tenant else 0
+        from clients.models import Client
+        from workflow.models import ReviewClient
+        from zatca.models import ZatcaClient
+        actual = Client.objects.filter(tenant=user.tenant, is_active=True, client_type=Client.TYPE_ACTUAL).count()
+        review = ReviewClient.objects.filter(tenant=user.tenant).count()
+        zatca  = ZatcaClient.objects.filter(tenant=user.tenant).count()
+        context['total_clients'] = actual + review + zatca
         context['total_users'] = user.tenant.users.filter(is_active=True).count() if user.tenant else 0
         context['total_visits'] = Event.objects.filter(tenant=user.tenant, status=Event.STATUS_DONE).count() if user.tenant else 0
 
