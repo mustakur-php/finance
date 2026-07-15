@@ -136,6 +136,8 @@
                             {{ entry.client_name }}
                             {% if entry.entry_type == 'review' %}
                             <span class="badge ms-1" style="background:#6a1b9a;font-size:0.65rem;">مراجعة</span>
+                            {% elif entry.entry_type == 'zatca' %}
+                            <span class="badge ms-1" style="background:#b45309;font-size:0.65rem;">ZATCA</span>
                             {% endif %}
                         </td>
                         <td class="text-muted">{{ entry.client_company|default:"—" }}</td>
