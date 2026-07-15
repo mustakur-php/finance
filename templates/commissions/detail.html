@@ -139,7 +139,7 @@
                             {% endif %}
                         </td>
                         <td class="text-muted">{{ entry.client_company|default:"—" }}</td>
-                        <td>{{ entry.sales_rep.get_full_name|default:entry.sales_rep.username }}</td>
+                        <td>{% if entry.sales_rep %}{{ entry.sales_rep.get_full_name|default:entry.sales_rep.username }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
                         <td>
                             {% if entry.accountant_rep %}
                                 {{ entry.accountant_rep.get_full_name|default:entry.accountant_rep.username }}
