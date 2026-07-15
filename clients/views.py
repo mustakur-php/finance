@@ -258,6 +258,8 @@ def client_convert(request, pk):
             responsible_person=client.responsible_person,
             job_title=client.job_title,
             notes=client.notes,
+            distinguished_number=client.distinguished_number,
+            secret_number=client.secret_number,
             assigned_accountant=accountant,
             created_by=request.user,
         )
@@ -287,6 +289,8 @@ def client_convert(request, pk):
             responsible_person=client.responsible_person,
             job_title=client.job_title,
             notes=client.notes,
+            distinguished_number=client.distinguished_number,
+            secret_number=client.secret_number,
             assigned_reviewer=client.assigned_sales,
             created_by=request.user,
         )

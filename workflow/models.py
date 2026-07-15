@@ -16,6 +16,8 @@ class ReviewClient(models.Model):
     job_title          = models.CharField(max_length=100, blank=True)
     activity           = models.CharField(max_length=100, blank=True)
     notes              = models.TextField(blank=True)
+    distinguished_number = models.CharField(max_length=100, blank=True, verbose_name='الرقم المميز')
+    secret_number        = models.CharField(max_length=100, blank=True, verbose_name='الرقم السري')
     assigned_reviewer    = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_review_clients')
     is_commissionable    = models.BooleanField(default=False, verbose_name='خاضع للعمولة')
     created_by  = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='created_review_clients')

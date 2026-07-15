@@ -71,6 +71,18 @@
                         <div>{{ client.notes }}</div>
                     </div>
                     {% endif %}
+                    {% if client.distinguished_number %}
+                    <div class="col-md-6">
+                        <div class="text-muted small">الرقم المميز</div>
+                        <div class="fw-semibold">{{ client.distinguished_number }}</div>
+                    </div>
+                    {% endif %}
+                    {% if client.secret_number %}
+                    <div class="col-md-6">
+                        <div class="text-muted small">الرقم السري</div>
+                        <div class="fw-semibold">{{ client.secret_number }}</div>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>

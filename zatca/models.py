@@ -21,6 +21,8 @@ class ZatcaClient(models.Model):
     responsible_person = models.CharField(max_length=100, blank=True)
     job_title          = models.CharField(max_length=100, blank=True)
     notes              = models.TextField(blank=True)
+    distinguished_number = models.CharField(max_length=100, blank=True, verbose_name='الرقم المميز')
+    secret_number        = models.CharField(max_length=100, blank=True, verbose_name='الرقم السري')
     status             = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_IN_PROGRESS)
     report_file        = models.FileField(upload_to='zatca/reports/', null=True, blank=True, verbose_name='تقرير الإنجاز')
     assigned_accountant = models.ForeignKey(
