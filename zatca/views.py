@@ -17,17 +17,27 @@ def zatca_list(request):
     if not (request.user.is_admin or request.user.is_accountant):
         return redirect('dashboard')
 
+    from django.db.models import Exists, OuterRef, Q
     qs = ZatcaClient.objects.filter(tenant=request.user.tenant)
     if request.user.is_accountant and not request.user.is_admin:
         qs = qs.filter(assigned_accountant=request.user)
 
+    active_subq = ZatcaSession.objects.filter(
+        client=OuterRef('pk'), status=ZatcaSession.STATUS_IN_PROGRESS
+    )
+    qs = qs.annotate(has_active_session=Exists(active_subq))
+
     status_filter = request.GET.get('status', '')
     q = request.GET.get('q', '').strip()
-    if status_filter:
-        qs = qs.filter(status=status_filter)
+    if status_filter == 'in_progress':
+        qs = qs.filter(has_active_session=True)
+    elif status_filter == 'completed':
+        qs = qs.filter(has_active_session=False)
     if q:
-        from django.db.models import Q
         qs = qs.filter(Q(name__icontains=q) | Q(company__icontains=q))
+
+    total_in_progress = qs.filter(has_active_session=True).count()
+    total_completed   = qs.filter(has_active_session=False).count()
 
     paginator = Paginator(qs.select_related('assigned_accountant'), 10)
     page_obj = paginator.get_page(request.GET.get('page'))
@@ -37,8 +47,8 @@ def zatca_list(request):
         'status_filter': status_filter,
         'q': q,
         'status_choices': ZatcaClient.STATUS_CHOICES,
-        'total_in_progress': qs.filter(status=ZatcaClient.STATUS_IN_PROGRESS).count(),
-        'total_completed': qs.filter(status=ZatcaClient.STATUS_COMPLETED).count(),
+        'total_in_progress': total_in_progress,
+        'total_completed': total_completed,
     })
 
 

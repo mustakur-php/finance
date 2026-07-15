@@ -73,10 +73,10 @@
                     {% else %}<span class="text-muted">—</span>{% endif %}
                 </td>
                 <td>
-                    {% if client.status == 'in_progress' %}
-                    <span class="badge" style="background:#b45309">تحت الإجراء</span>
+                    {% if client.has_active_session %}
+                    <span class="badge" style="background:#b45309">دورة نشطة</span>
                     {% else %}
-                    <span class="badge bg-success">مكتمل</span>
+                    <span class="badge bg-secondary">لا توجد دورة نشطة</span>
                     {% endif %}
                 </td>
                 <td class="text-muted small">{{ client.created_at|date:"Y/m/d" }}</td>
