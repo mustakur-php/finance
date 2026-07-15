@@ -6,11 +6,6 @@
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <a href="{% url 'zatca_list' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-right me-1"></i> رجوع</a>
     <div class="d-flex gap-2">
-        {% if client.status == 'in_progress' and request.user.is_admin or client.status == 'in_progress' and request.user.is_accountant %}
-        <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#completeModal">
-            <i class="bi bi-check-circle me-1"></i> إكمال الملف
-        </button>
-        {% endif %}
         <a href="{% url 'zatca_edit' client.pk %}" class="btn btn-outline-primary btn-sm">
             <i class="bi bi-pencil me-1"></i> تعديل
         </a>
@@ -25,73 +20,129 @@
 <div class="row g-3">
     <!-- بيانات العميل -->
     <div class="col-md-8">
-        <div class="card">
+        <div class="card mb-3">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-person me-1"></i> بيانات العميل</span>
-                {% if client.status == 'in_progress' %}
-                <span class="badge" style="background:#b45309">تحت الإجراء</span>
-                {% else %}
-                <span class="badge bg-success">مكتمل</span>
-                {% endif %}
+                <span class="badge bg-info text-dark">{{ client.get_period_months_display }}</span>
             </div>
             <div class="card-body">
                 <div class="row g-3">
-                    <div class="col-md-6">
-                        <div class="text-muted small">الاسم</div>
-                        <div class="fw-semibold">{{ client.name }}</div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="text-muted small">الشركة</div>
-                        <div>{{ client.company|default:"—" }}</div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="text-muted small">الجوال</div>
-                        <div>{{ client.phone|default:"—" }}</div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="text-muted small">البريد الإلكتروني</div>
-                        <div>{{ client.email|default:"—" }}</div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="text-muted small">المدينة</div>
-                        <div>{{ client.city|default:"—" }}</div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="text-muted small">الحي</div>
-                        <div>{{ client.district|default:"—" }}</div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="text-muted small">المسؤول</div>
-                        <div>{{ client.responsible_person|default:"—" }}</div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="text-muted small">المسمى الوظيفي</div>
-                        <div>{{ client.job_title|default:"—" }}</div>
-                    </div>
+                    <div class="col-md-6"><div class="text-muted small">الاسم</div><div class="fw-semibold">{{ client.name }}</div></div>
+                    <div class="col-md-6"><div class="text-muted small">الشركة</div><div>{{ client.company|default:"—" }}</div></div>
+                    <div class="col-md-6"><div class="text-muted small">الجوال</div><div>{{ client.phone|default:"—" }}</div></div>
+                    <div class="col-md-6"><div class="text-muted small">البريد الإلكتروني</div><div>{{ client.email|default:"—" }}</div></div>
+                    <div class="col-md-6"><div class="text-muted small">المدينة</div><div>{{ client.city|default:"—" }}</div></div>
+                    <div class="col-md-6"><div class="text-muted small">الحي</div><div>{{ client.district|default:"—" }}</div></div>
+                    <div class="col-md-6"><div class="text-muted small">المسؤول</div><div>{{ client.responsible_person|default:"—" }}</div></div>
+                    <div class="col-md-6"><div class="text-muted small">المسمى الوظيفي</div><div>{{ client.job_title|default:"—" }}</div></div>
                     {% if client.notes %}
-                    <div class="col-12">
-                        <div class="text-muted small">ملاحظات</div>
-                        <div>{{ client.notes }}</div>
-                    </div>
+                    <div class="col-12"><div class="text-muted small">ملاحظات</div><div>{{ client.notes }}</div></div>
                     {% endif %}
                     {% if client.distinguished_number %}
-                    <div class="col-md-6">
-                        <div class="text-muted small">الرقم المميز</div>
-                        <div class="fw-semibold">{{ client.distinguished_number }}</div>
-                    </div>
+                    <div class="col-md-6"><div class="text-muted small">الرقم المميز</div><div class="fw-semibold">{{ client.distinguished_number }}</div></div>
                     {% endif %}
                     {% if client.secret_number %}
-                    <div class="col-md-6">
-                        <div class="text-muted small">الرقم السري</div>
-                        <div class="fw-semibold">{{ client.secret_number }}</div>
-                    </div>
+                    <div class="col-md-6"><div class="text-muted small">الرقم السري</div><div class="fw-semibold">{{ client.secret_number }}</div></div>
                     {% endif %}
                 </div>
             </div>
         </div>
+
+        <!-- الدورة الحالية -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-arrow-repeat me-1"></i> الدورة الحالية</span>
+                {% if not active_session %}
+                {% if request.user.is_admin or request.user.is_accountant %}
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#newSessionModal">
+                    <i class="bi bi-plus-circle me-1"></i> فتح دورة جديدة
+                </button>
+                {% endif %}
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if active_session %}
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                    <div>
+                        <span class="badge" style="background:#b45309">تحت الإجراء</span>
+                        <span class="text-muted small ms-2">بدأت في: <strong>{{ active_session.start_date }}</strong></span>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#completeSessionModal">
+                            <i class="bi bi-check-circle me-1"></i> إكمال الدورة
+                        </button>
+                        {% if request.user.is_admin %}
+                        <form method="post" action="{% url 'zatca_session_delete' active_session.pk %}" onsubmit="return confirm('حذف الدورة؟')">
+                            {% csrf_token %}
+                            <button class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+                {% else %}
+                <p class="text-muted mb-0 small">لا توجد دورة نشطة حالياً.
+                {% if next_start %} الدورة القادمة المقترحة: <strong>{{ next_start }}</strong>{% endif %}
+                </p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- سجل الدورات -->
+        <div class="card">
+            <div class="card-header"><i class="bi bi-clock-history me-1"></i> سجل الدورات</div>
+            <div class="card-body p-0">
+                {% if sessions %}
+                <table class="table table-sm mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>تاريخ البداية</th>
+                            <th>تاريخ الانتهاء</th>
+                            <th>الحالة</th>
+                            <th>التقرير</th>
+                            {% if request.user.is_admin %}<th></th>{% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in sessions %}
+                        <tr>
+                            <td>{{ s.start_date }}</td>
+                            <td>{{ s.end_date|default:"—" }}</td>
+                            <td>
+                                {% if s.status == 'completed' %}
+                                <span class="badge bg-success">مكتملة</span>
+                                {% else %}
+                                <span class="badge" style="background:#b45309">تحت الإجراء</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if s.report_file %}
+                                <a href="{{ s.report_file.url }}" target="_blank" class="btn btn-outline-success btn-sm py-0">
+                                    <i class="bi bi-download"></i> تحميل
+                                </a>
+                                {% else %}—{% endif %}
+                            </td>
+                            {% if request.user.is_admin %}
+                            <td>
+                                {% if s.status != 'completed' %}
+                                <form method="post" action="{% url 'zatca_session_delete' s.pk %}" onsubmit="return confirm('حذف الدورة؟')">
+                                    {% csrf_token %}
+                                    <button class="btn btn-outline-danger btn-sm py-0"><i class="bi bi-trash"></i></button>
+                                </form>
+                                {% endif %}
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="text-muted small p-3 mb-0">لا توجد دورات بعد.</p>
+                {% endif %}
+            </div>
+        </div>
     </div>
 
-    <!-- الجانب الأيسر -->
+    <!-- الجانب الأيمن -->
     <div class="col-md-4">
         <div class="card mb-3">
             <div class="card-header"><i class="bi bi-person-badge me-1"></i> المحاسب المسند</div>
@@ -104,27 +155,13 @@
             </div>
         </div>
 
-        <div class="card mb-3">
-            <div class="card-header"><i class="bi bi-file-earmark-text me-1"></i> تقرير الإنجاز</div>
-            <div class="card-body">
-                {% if client.report_file %}
-                <a href="{{ client.report_file.url }}" target="_blank" class="btn btn-outline-success btn-sm w-100">
-                    <i class="bi bi-download me-1"></i> تحميل التقرير
-                </a>
-                {% if client.completed_at %}
-                <div class="text-muted small mt-2">اكتمل في: {{ client.completed_at|date:"Y/m/d H:i" }}</div>
-                {% endif %}
-                {% else %}
-                <span class="text-muted small">لم يُرفع تقرير بعد</span>
-                {% endif %}
-            </div>
-        </div>
-
         <div class="card">
             <div class="card-header"><i class="bi bi-info-circle me-1"></i> معلومات</div>
             <div class="card-body">
                 <div class="small text-muted">تاريخ الإضافة</div>
                 <div class="mb-2">{{ client.created_at|date:"Y/m/d" }}</div>
+                <div class="small text-muted">الفترة</div>
+                <div class="mb-2">{{ client.get_period_months_display }}</div>
                 {% if request.user.is_admin %}
                 <div class="small text-muted">العمولة</div>
                 <div class="form-check form-switch mt-1">
@@ -139,21 +176,50 @@
     </div>
 </div>
 
-<!-- Modal إكمال الملف -->
-{% if client.status == 'in_progress' %}
-<div class="modal fade" id="completeModal" tabindex="-1">
+<!-- Modal دورة جديدة -->
+<div class="modal fade" id="newSessionModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form method="post" action="{% url 'zatca_complete' client.pk %}" enctype="multipart/form-data">
+            <form method="post" action="{% url 'zatca_session_create' client.pk %}">
                 {% csrf_token %}
                 <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-check-circle me-2 text-success"></i> إكمال ملف العميل</h5>
+                    <h5 class="modal-title"><i class="bi bi-plus-circle me-2 text-primary"></i> فتح دورة جديدة</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="text-muted small">سيتم تغيير حالة <strong>{{ client.name }}</strong> إلى مكتمل.</p>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">تقرير الإنجاز <span class="text-danger">*</span></label>
+                        <label class="form-label fw-semibold">تاريخ البداية <span class="text-danger">*</span></label>
+                        <input type="date" name="start_date" class="form-control" required
+                               value="{{ next_start|default:'' }}">
+                        {% if next_start %}
+                        <div class="form-text">مقترح تلقائياً بناءً على الفترة ({{ client.get_period_months_display }})</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary btn-sm">فتح الدورة</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal إكمال الدورة -->
+{% if active_session %}
+<div class="modal fade" id="completeSessionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'zatca_session_complete' active_session.pk %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-check-circle me-2 text-success"></i> إكمال الدورة</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small">الدورة الحالية بدأت في <strong>{{ active_session.start_date }}</strong></p>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">تقرير الدورة <span class="text-danger">*</span></label>
                         <input type="file" name="report_file" class="form-control" required
                                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png">
                         <div class="form-text">PDF, Word, Excel, أو صورة — إلزامي</div>
@@ -169,7 +235,7 @@
 </div>
 {% endif %}
 
-<!-- Modal حذف -->
+<!-- Modal حذف العميل -->
 {% if request.user.is_admin %}
 <div class="modal fade" id="deleteModal" tabindex="-1">
     <div class="modal-dialog">
@@ -192,4 +258,13 @@
     </div>
 </div>
 {% endif %}
+
+<script>
+document.querySelectorAll('.commission-toggle').forEach(function(el) {
+    el.addEventListener('change', function() {
+        fetch(this.dataset.url, {method:'POST', headers:{'X-CSRFToken':'{{ csrf_token }}'}})
+        .then(r => r.json()).then(d => { this.checked = d.is_commissionable; });
+    });
+});
+</script>
 {% endblock %}

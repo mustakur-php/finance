@@ -246,6 +246,8 @@ def client_convert(request, pk):
         accountant = None
         if accountant_id:
             accountant = UserModel.objects.filter(pk=accountant_id, tenant=request.user.tenant, role=UserModel.ROLE_ACCOUNTANT).first()
+        period = request.POST.get('period_months', '1')
+        period = int(period) if period in ('1', '3', '6', '12') else 1
         zatca_client = ZatcaClient.objects.create(
             tenant=client.tenant,
             name=client.name,
@@ -261,6 +263,7 @@ def client_convert(request, pk):
             distinguished_number=client.distinguished_number,
             secret_number=client.secret_number,
             assigned_accountant=accountant,
+            period_months=period,
             created_by=request.user,
         )
         client.converted_status = 'zatca'

@@ -54,6 +54,17 @@
                     <label class="form-label fw-semibold">ملاحظات</label>
                     <textarea name="notes" class="form-control" rows="3">{{ client.notes }}</textarea>
                 </div>
+                {% if request.user.is_admin %}
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">الفترة</label>
+                    <select name="period_months" class="form-select">
+                        <option value="1"  {% if client.period_months == 1  %}selected{% endif %}>شهري</option>
+                        <option value="3"  {% if client.period_months == 3  %}selected{% endif %}>ربع سنوي</option>
+                        <option value="6"  {% if client.period_months == 6  %}selected{% endif %}>نصف سنوي</option>
+                        <option value="12" {% if client.period_months == 12 %}selected{% endif %}>سنوي</option>
+                    </select>
+                </div>
+                {% endif %}
                 <div class="col-md-6">
                     <label class="form-label fw-semibold">الرقم المميز</label>
                     <input type="text" name="distinguished_number" class="form-control" value="{{ client.distinguished_number }}">

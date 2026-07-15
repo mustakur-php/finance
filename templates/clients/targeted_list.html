@@ -200,13 +200,24 @@
                 </div>
                 <div class="modal-body">
                     <p class="text-muted small mb-3">سيتم نقل <strong>{{ client.name }}</strong> إلى قسم ZATCA.</p>
-                    <label class="form-label fw-semibold">المحاسب المسند</label>
-                    <select name="accountant_id" class="form-select form-select-sm">
-                        <option value="">— اختر محاسباً —</option>
-                        {% for u in accountant_users %}
-                        <option value="{{ u.pk }}">{{ u.get_full_name|default:u.username }}</option>
-                        {% endfor %}
-                    </select>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">المحاسب المسند</label>
+                        <select name="accountant_id" class="form-select form-select-sm">
+                            <option value="">— اختر محاسباً —</option>
+                            {% for u in accountant_users %}
+                            <option value="{{ u.pk }}">{{ u.get_full_name|default:u.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label fw-semibold">الفترة</label>
+                        <select name="period_months" class="form-select form-select-sm">
+                            <option value="1">شهري</option>
+                            <option value="3">ربع سنوي</option>
+                            <option value="6">نصف سنوي</option>
+                            <option value="12">سنوي</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">إلغاء</button>

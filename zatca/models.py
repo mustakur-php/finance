@@ -30,6 +30,13 @@ class ZatcaClient(models.Model):
         null=True, blank=True, related_name='zatca_clients',
         verbose_name='المحاسب المسند'
     )
+    PERIOD_CHOICES = [
+        (1,  'شهري'),
+        (3,  'ربع سنوي'),
+        (6,  'نصف سنوي'),
+        (12, 'سنوي'),
+    ]
+    period_months      = models.PositiveSmallIntegerField(choices=PERIOD_CHOICES, default=1, verbose_name='الفترة')
     is_commissionable  = models.BooleanField(default=False, verbose_name='خاضع للعمولة')
     created_by         = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
@@ -45,3 +52,39 @@ class ZatcaClient(models.Model):
 
     def __str__(self):
         return self.name
+
+    def next_session_start(self):
+        last = self.sessions.order_by('-start_date').first()
+        if not last:
+            return None
+        from dateutil.relativedelta import relativedelta
+        return last.start_date + relativedelta(months=self.period_months)
+
+
+class ZatcaSession(models.Model):
+    STATUS_IN_PROGRESS = 'in_progress'
+    STATUS_COMPLETED   = 'completed'
+    STATUS_CHOICES = [
+        (STATUS_IN_PROGRESS, 'تحت الإجراء'),
+        (STATUS_COMPLETED,   'مكتملة'),
+    ]
+
+    client      = models.ForeignKey(ZatcaClient, on_delete=models.CASCADE, related_name='sessions')
+    start_date  = models.DateField(verbose_name='تاريخ البداية')
+    end_date    = models.DateField(null=True, blank=True, verbose_name='تاريخ الانتهاء')
+    status      = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_IN_PROGRESS)
+    report_file = models.FileField(upload_to='zatca/sessions/', null=True, blank=True, verbose_name='تقرير الدورة')
+    notes       = models.TextField(blank=True)
+    created_by  = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, related_name='created_zatca_sessions'
+    )
+    created_at  = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-start_date']
+        verbose_name = 'دورة ZATCA'
+
+    def __str__(self):
+        return f'{self.client.name} — {self.start_date}'

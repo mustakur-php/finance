@@ -26,6 +26,7 @@ class CommissionEntry(models.Model):
     client = models.ForeignKey('clients.Client', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='العميل')
     review_client = models.ForeignKey('workflow.ReviewClient', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='عميل المراجعة')
     zatca_client  = models.ForeignKey('zatca.ZatcaClient', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='عميل ZATCA')
+    zatca_session = models.ForeignKey('zatca.ZatcaSession', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='دورة ZATCA')
     sales_rep = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
                                    related_name='commission_entries', verbose_name='المندوب')
     accountant_rep = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
@@ -69,6 +70,8 @@ class CommissionEntry(models.Model):
             return self.client.name
         if self.review_client:
             return self.review_client.name
+        if self.zatca_session:
+            return f"{self.zatca_session.client.name} ({self.zatca_session.start_date})"
         if self.zatca_client:
             return self.zatca_client.name
         return '—'
@@ -87,7 +90,7 @@ class CommissionEntry(models.Model):
     def entry_type(self):
         if self.review_client:
             return 'review'
-        if self.zatca_client:
+        if self.zatca_session or self.zatca_client:
             return 'zatca'
         return 'client'
 

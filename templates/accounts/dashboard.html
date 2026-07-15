@@ -244,4 +244,21 @@
 })();
 </script>
 {% endif %}
+
+{% if upcoming_zatca_sessions %}
+<div class="alert d-flex align-items-start gap-3 mt-3" style="background:#fef3c7; border:1px solid #f59e0b; border-radius:10px;">
+    <i class="bi bi-bell-fill fs-5 mt-1" style="color:#b45309"></i>
+    <div>
+        <div class="fw-semibold mb-1" style="color:#92400e">تذكير — دورات ZATCA قادمة</div>
+        <ul class="mb-0 ps-3">
+            {% for s in upcoming_zatca_sessions %}
+            <li class="small">
+                <a href="{% url 'zatca_detail' s.client.pk %}" style="color:#92400e; font-weight:500;">{{ s.client.name }}</a>
+                — تاريخ البداية: <strong>{{ s.start_date }}</strong>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

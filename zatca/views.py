@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
-from .models import ZatcaClient
+from .models import ZatcaClient, ZatcaSession
 from accounts.decorators import admin_required
 
 
@@ -52,7 +52,15 @@ def zatca_detail(request, pk):
         if client.assigned_accountant != request.user:
             messages.error(request, 'ليس لديك صلاحية عرض هذا العميل')
             return redirect('zatca_list')
-    return render(request, 'zatca/detail.html', {'client': client})
+    sessions = client.sessions.all()
+    active_session = sessions.filter(status=ZatcaSession.STATUS_IN_PROGRESS).first()
+    next_start = client.next_session_start()
+    return render(request, 'zatca/detail.html', {
+        'client': client,
+        'sessions': sessions,
+        'active_session': active_session,
+        'next_start': next_start,
+    })
 
 
 @login_required
@@ -107,6 +115,10 @@ def zatca_edit(request, pk):
         client.notes              = request.POST.get('notes', '').strip()
         client.distinguished_number = request.POST.get('distinguished_number', '').strip()
         client.secret_number      = request.POST.get('secret_number', '').strip()
+        if request.user.is_admin:
+            period = request.POST.get('period_months', '')
+            if period in ('1', '3', '6', '12'):
+                client.period_months = int(period)
         client.save()
         from audit_log.utils import log_action
         from audit_log.models import AuditLog
@@ -145,3 +157,92 @@ def zatca_toggle_commissionable(request, pk):
          changes={'العمولة': {'من': 'غير خاضع' if client.is_commissionable else 'خاضع',
                               'إلى': 'خاضع' if client.is_commissionable else 'غير خاضع'}})
     return JsonResponse({'status': 'ok', 'is_commissionable': client.is_commissionable})
+
+
+@login_required
+def zatca_session_create(request, pk):
+    if not (request.user.is_admin or request.user.is_accountant):
+        return redirect('dashboard')
+    client = get_object_or_404(ZatcaClient, pk=pk, tenant=request.user.tenant)
+    if request.method != 'POST':
+        return redirect('zatca_detail', pk=pk)
+
+    start_date = request.POST.get('start_date', '').strip()
+    if not start_date:
+        messages.error(request, 'يجب تحديد تاريخ البداية')
+        return redirect('zatca_detail', pk=pk)
+
+    session = ZatcaSession.objects.create(
+        client=client,
+        start_date=start_date,
+        created_by=request.user,
+    )
+    from audit_log.utils import log_action
+    from audit_log.models import AuditLog
+    log_action(request, AuditLog.ACTION_CREATE, obj=session)
+    messages.success(request, 'تم فتح دورة جديدة بنجاح')
+    return redirect('zatca_detail', pk=pk)
+
+
+@login_required
+def zatca_session_complete(request, session_pk):
+    if not (request.user.is_admin or request.user.is_accountant):
+        return redirect('dashboard')
+    if request.method != 'POST':
+        return redirect('zatca_list')
+
+    session = get_object_or_404(ZatcaSession, pk=session_pk)
+    client = session.client
+    if client.tenant != request.user.tenant:
+        return redirect('zatca_list')
+
+    report = request.FILES.get('report_file')
+    if not report:
+        messages.error(request, 'يجب رفع تقرير الدورة لإكمالها')
+        return redirect('zatca_detail', pk=client.pk)
+
+    from django.utils import timezone
+    session.status = ZatcaSession.STATUS_COMPLETED
+    session.report_file = report
+    session.completed_at = timezone.now()
+    session.end_date = timezone.localdate()
+    session.save()
+
+    from audit_log.utils import log_action
+    from audit_log.models import AuditLog
+    log_action(request, AuditLog.ACTION_UPDATE, obj=session,
+               changes={'الحالة': {'من': 'تحت الإجراء', 'إلى': 'مكتملة'}})
+
+    # إضافة الدورة لشيت العمولات إذا كان العميل خاضعاً للعمولة
+    if client.is_commissionable:
+        from commissions.models import CommissionSheet, CommissionEntry
+        sheet = CommissionSheet.objects.filter(tenant=client.tenant).order_by('-created_at').first()
+        if sheet:
+            CommissionEntry.objects.create(
+                sheet=sheet,
+                zatca_client=client,
+                zatca_session=session,
+                accountant_rep=client.assigned_accountant,
+                amount=0,
+            )
+
+    messages.success(request, f'تم إكمال الدورة بنجاح')
+    return redirect('zatca_detail', pk=client.pk)
+
+
+@login_required
+@admin_required
+def zatca_session_delete(request, session_pk):
+    if request.method != 'POST':
+        return redirect('zatca_list')
+    session = get_object_or_404(ZatcaSession, pk=session_pk)
+    client = session.client
+    if client.tenant != request.user.tenant:
+        return redirect('zatca_list')
+    from audit_log.utils import log_action
+    from audit_log.models import AuditLog
+    log_action(request, AuditLog.ACTION_DELETE, model_name='ZatcaSession',
+               object_repr=str(session), object_id=str(session_pk))
+    session.delete()
+    messages.success(request, 'تم حذف الدورة')
+    return redirect('zatca_detail', pk=client.pk)
