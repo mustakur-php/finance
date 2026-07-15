@@ -174,24 +174,6 @@
             </div>
         </div>
 
-        <!-- تحويل العميل -->
-        {% if client.client_type == 'potential' and client.converted_status == '' %}
-        <div class="card mb-3">
-            <div class="card-header"><i class="bi bi-arrow-left-right me-1"></i> تحويل العميل</div>
-            <div class="card-body d-grid gap-2">
-                <button class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#convertActualModal">
-                    <i class="bi bi-person-check me-1"></i> تحويل إلى عميل فعلي
-                </button>
-                <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#convertReviewModal">
-                    <i class="bi bi-diagram-3 me-1"></i> تحويل إلى قسم المراجعة
-                </button>
-                <button class="btn btn-outline-warning btn-sm" data-bs-toggle="modal" data-bs-target="#convertZatcaModal">
-                    <i class="bi bi-building me-1"></i> تحويل إلى ZATCA
-                </button>
-            </div>
-        </div>
-        {% endif %}
-
         <!-- المرفقات -->
         <div class="card">
             <div class="card-header"><i class="bi bi-paperclip me-1"></i> المرفقات</div>
@@ -223,84 +205,6 @@
         </div>
     </div>
 </div>
-
-<!-- Modal تحويل إلى عميل فعلي -->
-{% if client.client_type == 'potential' and client.converted_status == '' %}
-<div class="modal fade" id="convertActualModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <form method="post" action="{% url 'client_convert' client.pk %}">
-                {% csrf_token %}
-                <input type="hidden" name="target" value="actual">
-                <div class="modal-header">
-                    <h6 class="modal-title"><i class="bi bi-person-check me-2 text-success"></i> تحويل إلى عميل فعلي</h6>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="text-muted small">سيتم تحويل <strong>{{ client.name }}</strong> إلى قائمة العملاء الفعليين.</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="submit" class="btn btn-success btn-sm">تأكيد التحويل</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Modal تحويل إلى قسم المراجعة -->
-<div class="modal fade" id="convertReviewModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <form method="post" action="{% url 'client_convert' client.pk %}">
-                {% csrf_token %}
-                <input type="hidden" name="target" value="review">
-                <div class="modal-header">
-                    <h6 class="modal-title"><i class="bi bi-diagram-3 me-2 text-primary"></i> تحويل إلى قسم المراجعة</h6>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="text-muted small">سيتم نقل <strong>{{ client.name }}</strong> إلى قسم المراجعة وإنشاء مراحل سير العمل.</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="submit" class="btn btn-primary btn-sm">تأكيد التحويل</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Modal تحويل إلى ZATCA -->
-<div class="modal fade" id="convertZatcaModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <form method="post" action="{% url 'client_convert' client.pk %}">
-                {% csrf_token %}
-                <input type="hidden" name="target" value="zatca">
-                <div class="modal-header">
-                    <h6 class="modal-title"><i class="bi bi-building me-2 text-warning"></i> تحويل إلى ZATCA</h6>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="text-muted small mb-3">سيتم نقل <strong>{{ client.name }}</strong> إلى قسم ZATCA.</p>
-                    <label class="form-label fw-semibold">المحاسب المسند</label>
-                    <select name="accountant_id" class="form-select form-select-sm">
-                        <option value="">— اختر محاسباً —</option>
-                        {% for u in accountant_users %}
-                        <option value="{{ u.pk }}">{{ u.get_full_name|default:u.username }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="submit" class="btn btn-warning btn-sm text-white">تأكيد التحويل</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-{% endif %}
 
 {% if request.user.is_admin %}
 <div class="modal fade" id="deleteClientModal" tabindex="-1">
