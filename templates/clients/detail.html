@@ -63,6 +63,16 @@
                         <label class="text-muted small">العنوان</label>
                         <p class="mb-1">{{ client.address|default:"—" }}</p>
                     </div>
+                    {% if client.distinguished_number or client.secret_number %}
+                    <div class="col-md-6">
+                        <label class="text-muted small">الرقم المميز</label>
+                        <p class="mb-1">{{ client.distinguished_number|default:"—" }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small">الرقم السري</label>
+                        <p class="mb-1">{{ client.secret_number|default:"—" }}</p>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>

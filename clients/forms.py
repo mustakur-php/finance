@@ -95,6 +95,7 @@ class ClientForm(forms.ModelForm):
         model = Client
         fields = ['name', 'company', 'city', 'district', 'address', 'phone', 'email',
                   'responsible_person', 'job_title', 'activity', 'notes',
+                  'distinguished_number', 'secret_number',
                   'assigned_sales', 'assigned_accountant', 'assigned_review',
                   'is_commissionable']
         widgets = {
@@ -109,6 +110,8 @@ class ClientForm(forms.ModelForm):
             'job_title': forms.TextInput(attrs={'class': 'form-control'}),
             'activity': forms.Select(attrs={'class': 'form-select'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'distinguished_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'secret_number': forms.TextInput(attrs={'class': 'form-control'}),
             'assigned_sales': forms.Select(attrs={'class': 'form-select'}),
             'assigned_accountant': forms.Select(attrs={'class': 'form-select'}),
             'assigned_review': forms.Select(attrs={'class': 'form-select'}),

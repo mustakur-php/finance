@@ -39,6 +39,8 @@ class Client(models.Model):
     activity = models.ForeignKey(Activity, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='النشاط')
     client_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default=TYPE_POTENTIAL, verbose_name='نوع العميل')
     notes = models.TextField(blank=True, verbose_name='ملاحظات')
+    distinguished_number = models.CharField(max_length=100, blank=True, verbose_name='الرقم المميز')
+    secret_number = models.CharField(max_length=100, blank=True, verbose_name='الرقم السري')
     assigned_sales = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
                                         null=True, blank=True, related_name='sales_clients',
                                         verbose_name='المندوب المسئول')
