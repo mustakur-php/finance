@@ -78,7 +78,8 @@ def zatca_complete(request, pk):
     client.report_file = report
     client.completed_at = timezone.now()
     client.save()
-    _log(request, 'update', obj=client,
+    from audit_log.models import AuditLog
+    _log(request, AuditLog.ACTION_UPDATE, obj=client,
          changes={'الحالة': {'من': 'تحت الإجراء', 'إلى': 'مكتمل'}})
     messages.success(request, f'تم إكمال ملف "{client.name}" بنجاح')
     return redirect('zatca_detail', pk=pk)
@@ -139,4 +140,8 @@ def zatca_toggle_commissionable(request, pk):
     client = get_object_or_404(ZatcaClient, pk=pk, tenant=request.user.tenant)
     client.is_commissionable = not client.is_commissionable
     client.save(update_fields=['is_commissionable'])
+    from audit_log.models import AuditLog
+    _log(request, AuditLog.ACTION_UPDATE, obj=client,
+         changes={'العمولة': {'من': 'غير خاضع' if client.is_commissionable else 'خاضع',
+                              'إلى': 'خاضع' if client.is_commissionable else 'غير خاضع'}})
     return JsonResponse({'status': 'ok', 'is_commissionable': client.is_commissionable})
