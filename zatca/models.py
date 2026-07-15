@@ -3,13 +3,6 @@ from django.conf import settings
 
 
 class ZatcaClient(models.Model):
-    STATUS_IN_PROGRESS = 'in_progress'
-    STATUS_COMPLETED   = 'completed'
-    STATUS_CHOICES = [
-        (STATUS_IN_PROGRESS, 'تحت الإجراء'),
-        (STATUS_COMPLETED,   'مكتمل'),
-    ]
-
     tenant             = models.ForeignKey('accounts.Tenant', on_delete=models.CASCADE, related_name='zatca_clients')
     name               = models.CharField(max_length=200)
     company            = models.CharField(max_length=200, blank=True)
@@ -23,8 +16,6 @@ class ZatcaClient(models.Model):
     notes              = models.TextField(blank=True)
     distinguished_number = models.CharField(max_length=100, blank=True, verbose_name='الرقم المميز')
     secret_number        = models.CharField(max_length=100, blank=True, verbose_name='الرقم السري')
-    status             = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_IN_PROGRESS)
-    report_file        = models.FileField(upload_to='zatca/reports/', null=True, blank=True, verbose_name='تقرير الإنجاز')
     assigned_accountant = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
         null=True, blank=True, related_name='zatca_clients',
@@ -43,7 +34,6 @@ class ZatcaClient(models.Model):
         null=True, related_name='created_zatca_clients'
     )
     created_at         = models.DateTimeField(auto_now_add=True)
-    completed_at       = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['-created_at']
