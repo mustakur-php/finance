@@ -5,7 +5,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('commissions', '0002_commissionentry_entry_date_commissionentry_is_confirmed'),
+        ('commissions', '0008_commissionentry_accountant_rep_and_more'),
         ('zatca', '0001_initial'),
     ]
 
