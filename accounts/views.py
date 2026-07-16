@@ -124,6 +124,7 @@ def dashboard_view(request):
         import json
         items_sorted = sorted(items, key=lambda x: x['value'], reverse=True)
         context['chart_items'] = items_sorted
+        context['chart_has_data'] = any(i['value'] > 0 for i in items_sorted)
         context['chart_json'] = json.dumps({
             'labels': [i['label'] for i in items_sorted],
             'values': [i['value'] for i in items_sorted],
