@@ -197,7 +197,7 @@ def superadmin_reports(request):
 @superadmin_required
 def superadmin_report_clients(request):
     from clients.models import Client
-    from accounts.models import User
+    from zatca.models import ZatcaClient
 
     tenants    = Tenant.objects.filter(is_active=True).order_by('name')
     tenant_id  = request.GET.get('tenant', '')
@@ -206,8 +206,12 @@ def superadmin_report_clients(request):
     city_f     = request.GET.get('city', '')
     type_f     = request.GET.get('type', 'actual')
     selected   = None
+    is_zatca   = type_f == 'zatca'
 
-    qs = Client.objects.filter(tenant__in=tenants, is_active=True, client_type=type_f)
+    if is_zatca:
+        qs = ZatcaClient.objects.filter(tenant__in=tenants)
+    else:
+        qs = Client.objects.filter(tenant__in=tenants, is_active=True, client_type=type_f)
 
     if tenant_id:
         selected = get_object_or_404(Tenant, pk=tenant_id)
@@ -220,18 +224,25 @@ def superadmin_report_clients(request):
     if city_f:
         qs = qs.filter(city=city_f)
 
-    qs = qs.select_related('tenant', 'assigned_sales', 'assigned_accountant', 'activity')
-
-    by_city     = qs.values('city').annotate(count=Count('id')).order_by('-count')
-    by_activity = qs.values('activity__name').annotate(count=Count('id')).order_by('-count')
-    by_sales    = qs.values('assigned_sales__first_name', 'assigned_sales__last_name').annotate(count=Count('id')).order_by('-count')
-    cities      = Client.objects.filter(tenant__in=tenants, is_active=True).exclude(city='').values_list('city', flat=True).distinct()
+    if is_zatca:
+        qs = qs.select_related('tenant', 'assigned_accountant')
+        by_city     = qs.values('city').annotate(count=Count('id')).order_by('-count')
+        by_activity = None
+        by_sales    = qs.values('assigned_accountant__first_name', 'assigned_accountant__last_name').annotate(count=Count('id')).order_by('-count')
+        cities      = ZatcaClient.objects.filter(tenant__in=tenants).exclude(city='').values_list('city', flat=True).distinct()
+    else:
+        qs = qs.select_related('tenant', 'assigned_sales', 'assigned_accountant', 'activity')
+        by_city     = qs.values('city').annotate(count=Count('id')).order_by('-count')
+        by_activity = qs.values('activity__name').annotate(count=Count('id')).order_by('-count')
+        by_sales    = qs.values('assigned_sales__first_name', 'assigned_sales__last_name').annotate(count=Count('id')).order_by('-count')
+        cities      = Client.objects.filter(tenant__in=tenants, is_active=True).exclude(city='').values_list('city', flat=True).distinct()
 
     return render(request, 'superadmin/report_clients.html', {
         'clients':  qs,
         'total':    qs.count(),
         'tenants':  tenants,
         'selected': selected,
+        'is_zatca':     is_zatca,
         'by_city':      by_city,
         'by_activity':  by_activity,
         'by_sales':     by_sales,

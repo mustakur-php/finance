@@ -30,6 +30,7 @@
                 <select name="type" class="form-select form-select-sm">
                     <option value="actual" {% if filters.type == 'actual' %}selected{% endif %}>فعليون</option>
                     <option value="potential" {% if filters.type == 'potential' %}selected{% endif %}>مستهدفون</option>
+                    <option value="zatca" {% if filters.type == 'zatca' %}selected{% endif %}>ZATCA</option>
                 </select>
             </div>
             <div class="col-md-2">
@@ -79,6 +80,7 @@
             </div>
         </div>
     </div>
+    {% if not is_zatca %}
     <div class="col-md-3">
         <div class="card border-0 shadow-sm">
             <div class="card-body py-2">
@@ -92,13 +94,18 @@
             </div>
         </div>
     </div>
+    {% endif %}
     <div class="col-md-3">
         <div class="card border-0 shadow-sm">
             <div class="card-body py-2">
-                <div class="small fw-bold mb-1">توزيع حسب المندوب</div>
+                <div class="small fw-bold mb-1">توزيع حسب {% if is_zatca %}المحاسب{% else %}المندوب{% endif %}</div>
                 {% for r in by_sales|slice:":5" %}
                 <div class="d-flex justify-content-between small">
+                    {% if is_zatca %}
+                    <span>{{ r.assigned_accountant__first_name }} {{ r.assigned_accountant__last_name }}</span>
+                    {% else %}
                     <span>{{ r.assigned_sales__first_name }} {{ r.assigned_sales__last_name }}</span>
+                    {% endif %}
                     <span class="badge bg-light text-dark">{{ r.count }}</span>
                 </div>
                 {% endfor %}
@@ -118,9 +125,9 @@
                     <th>المنشأة</th>
                     <th>المدينة</th>
                     <th>الجوال</th>
-                    <th>المندوب</th>
+                    {% if not is_zatca %}<th>المندوب</th>{% endif %}
                     <th>المحاسب</th>
-                    <th>النشاط</th>
+                    {% if not is_zatca %}<th>النشاط</th>{% endif %}
                     <th>تاريخ الإضافة</th>
                 </tr>
             </thead>
@@ -132,9 +139,9 @@
                 <td>{{ c.company|default:"—" }}</td>
                 <td>{{ c.city|default:"—" }}</td>
                 <td>{{ c.phone|default:"—" }}</td>
-                <td>{{ c.assigned_sales.get_full_name|default:"—" }}</td>
+                {% if not is_zatca %}<td>{{ c.assigned_sales.get_full_name|default:"—" }}</td>{% endif %}
                 <td>{{ c.assigned_accountant.get_full_name|default:"—" }}</td>
-                <td>{{ c.activity.name|default:"—" }}</td>
+                {% if not is_zatca %}<td>{{ c.activity.name|default:"—" }}</td>{% endif %}
                 <td>{{ c.created_at|date:"Y/m/d" }}</td>
             </tr>
             {% empty %}
