@@ -151,6 +151,7 @@ def superadmin_reports(request):
     from commissions.models import CommissionEntry
     from calendar_app.models import Event
     from workflow.models import ReviewClient, WorkflowStage
+    from zatca.models import ZatcaClient, ZatcaSession
 
     tenants     = Tenant.objects.filter(is_active=True).order_by('name')
     tenant_id   = request.GET.get('tenant', '')
@@ -161,9 +162,11 @@ def superadmin_reports(request):
         selected = get_object_or_404(Tenant, pk=tenant_id)
         t_filter = Q(tenant=selected)
         e_filter = Q(sheet__tenant=selected)
+        z_filter = Q(client__tenant=selected)
     else:
         t_filter = Q(tenant__in=tenants)
         e_filter = Q(sheet__tenant__in=tenants)
+        z_filter = Q(client__tenant__in=tenants)
 
     ctx = {
         'tenants':          tenants,
@@ -171,6 +174,9 @@ def superadmin_reports(request):
         'today':            today,
         'total_clients':    Client.objects.filter(t_filter, is_active=True, client_type='actual').count(),
         'total_targeted':   Client.objects.filter(t_filter, is_active=True, client_type='potential').count(),
+        'total_zatca':      ZatcaClient.objects.filter(t_filter).count(),
+        'zatca_active':     ZatcaSession.objects.filter(z_filter, status=ZatcaSession.STATUS_IN_PROGRESS).count(),
+        'zatca_completed':  ZatcaSession.objects.filter(z_filter, status=ZatcaSession.STATUS_COMPLETED).count(),
         'total_amount':     CommissionEntry.objects.filter(e_filter).aggregate(s=Sum('amount'))['s'] or 0,
         'total_commission': CommissionEntry.objects.filter(e_filter).aggregate(s=Sum('commission_amount'))['s'] or 0,
         'total_accountant': CommissionEntry.objects.filter(e_filter).aggregate(s=Sum('accountant_commission_amount'))['s'] or 0,
