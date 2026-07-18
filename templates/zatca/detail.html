@@ -92,6 +92,7 @@
             <div class="card-header"><i class="bi bi-clock-history me-1"></i> سجل الدورات</div>
             <div class="card-body p-0">
                 {% if sessions %}
+                <div class="table-responsive">
                 <table class="table table-sm mb-0">
                     <thead class="table-light">
                         <tr>
@@ -135,6 +136,7 @@
                         {% endfor %}
                     </tbody>
                 </table>
+                </div>
                 {% else %}
                 <p class="text-muted small p-3 mb-0">لا توجد دورات بعد.</p>
                 {% endif %}
