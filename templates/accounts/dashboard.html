@@ -8,6 +8,41 @@
 {% endblock %}
 
 {% block content %}
+{% if zatca_reminders %}
+<div class="card mb-4" style="border:none; border-right:5px solid #b45309; border-radius:10px; background:#fffbeb;">
+    <div class="card-body py-3">
+        <div class="d-flex align-items-center gap-2 mb-2">
+            <i class="bi bi-exclamation-triangle-fill" style="color:#b45309"></i>
+            <span class="fw-bold" style="color:#92400e">
+                {{ zatca_reminders|length }} من دورات ZATCA تحتاج انتباهك
+            </span>
+        </div>
+        <div class="row g-2">
+            {% for r in zatca_reminders %}
+            <div class="col-md-6">
+                <a href="{% url 'zatca_detail' r.client.pk %}" class="d-flex align-items-center justify-content-between text-decoration-none px-3 py-2"
+                   style="background:#fff; border:1px solid #fde68a; border-radius:8px;">
+                    <div class="d-flex align-items-center gap-2" style="min-width:0">
+                        <i class="bi {% if r.opened %}bi-play-circle{% else %}bi-plus-circle{% endif %} flex-shrink-0" style="color:#b45309; font-size:0.9rem"></i>
+                        <div style="min-width:0">
+                            <div class="fw-semibold text-truncate" style="color:#78350f; font-size:0.85rem">{{ r.client.name }}</div>
+                            <div class="text-muted" style="font-size:0.72rem">
+                                {{ r.date|date:"Y/m/d" }} — {% if r.opened %}دورة مفتوحة{% else %}لم تُفتح بعد{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <span class="badge flex-shrink-0 ms-2" style="font-size:0.68rem;
+                        {% if r.tone == 'overdue' %}background:#dc2626{% elif r.tone == 'today' %}background:#b45309{% else %}background:#0284c7{% endif %}">
+                        {{ r.label }}
+                    </span>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <div class="row g-3 mb-4">
 
 {% if user.is_admin %}
@@ -252,20 +287,4 @@
 </script>
 {% endif %}
 
-{% if upcoming_zatca_sessions %}
-<div class="alert d-flex align-items-start gap-3 mt-3" style="background:#fef3c7; border:1px solid #f59e0b; border-radius:10px;">
-    <i class="bi bi-bell-fill fs-5 mt-1" style="color:#b45309"></i>
-    <div>
-        <div class="fw-semibold mb-1" style="color:#92400e">تذكير — دورات ZATCA قادمة</div>
-        <ul class="mb-0 ps-3">
-            {% for s in upcoming_zatca_sessions %}
-            <li class="small">
-                <a href="{% url 'zatca_detail' s.client.pk %}" style="color:#92400e; font-weight:500;">{{ s.client.name }}</a>
-                — تاريخ البداية: <strong>{{ s.start_date }}</strong>
-            </li>
-            {% endfor %}
-        </ul>
-    </div>
-</div>
-{% endif %}
 {% endblock %}

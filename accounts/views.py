@@ -56,36 +56,17 @@ def dashboard_view(request):
     if user.is_admin:
         from clients.models import Client
         from workflow.models import ReviewClient
-        from zatca.models import ZatcaClient, ZatcaSession
-        import datetime
+        from zatca.models import ZatcaClient
         actual = Client.objects.filter(tenant=user.tenant, is_active=True, client_type=Client.TYPE_ACTUAL).count()
         review = ReviewClient.objects.filter(tenant=user.tenant).count()
         zatca  = ZatcaClient.objects.filter(tenant=user.tenant).count()
         context['total_clients'] = actual + review + zatca
         context['total_users'] = user.tenant.users.filter(is_active=True).count() if user.tenant else 0
         context['total_visits'] = Event.objects.filter(tenant=user.tenant, status=Event.STATUS_DONE).count() if user.tenant else 0
-        # تذكيرات دورات ZATCA القادمة خلال يومين
-        reminder_date = today + datetime.timedelta(days=2)
-        upcoming_sessions = ZatcaSession.objects.filter(
-            client__tenant=user.tenant,
-            status=ZatcaSession.STATUS_IN_PROGRESS,
-            start_date__lte=reminder_date,
-            start_date__gte=today,
-        ).select_related('client')
-        context['upcoming_zatca_sessions'] = upcoming_sessions
 
-    if user.is_accountant and not user.is_admin:
-        from zatca.models import ZatcaSession
-        import datetime
-        reminder_date = today + datetime.timedelta(days=2)
-        upcoming_sessions = ZatcaSession.objects.filter(
-            client__tenant=user.tenant,
-            client__assigned_accountant=user,
-            status=ZatcaSession.STATUS_IN_PROGRESS,
-            start_date__lte=reminder_date,
-            start_date__gte=today,
-        ).select_related('client')
-        context['upcoming_zatca_sessions'] = upcoming_sessions
+    # تذكيرات دورات ZATCA — للأدمن والمحاسب
+    from zatca.utils import zatca_reminders
+    context['zatca_reminders'] = zatca_reminders(user)
 
     if user.is_admin:
         agg = CommissionEntry.objects.filter(sheet__tenant=user.tenant).aggregate(
