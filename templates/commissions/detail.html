@@ -139,6 +139,9 @@
                             {% elif entry.entry_type == 'zatca' %}
                             <span class="badge ms-1" style="background:#b45309;font-size:0.65rem;">ZATCA</span>
                             {% endif %}
+                            {% if entry.is_orphan %}
+                            <span class="badge ms-1 bg-secondary" style="font-size:0.65rem;" title="حُذف العميل — البيانات محفوظة">محذوف</span>
+                            {% endif %}
                         </td>
                         <td class="text-muted">{{ entry.client_company|default:"—" }}</td>
                         <td>{% if entry.sales_rep %}{{ entry.sales_rep.get_full_name|default:entry.sales_rep.username }}{% else %}<span class="text-muted">—</span>{% endif %}</td>

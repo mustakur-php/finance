@@ -25,14 +25,19 @@ class CommissionEntry(models.Model):
     sheet = models.ForeignKey(CommissionSheet, on_delete=models.CASCADE, related_name='entries')
     client = models.ForeignKey('clients.Client', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='العميل')
     review_client = models.ForeignKey('workflow.ReviewClient', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='عميل المراجعة')
-    zatca_client  = models.ForeignKey('zatca.ZatcaClient', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='عميل ZATCA')
-    zatca_session = models.ForeignKey('zatca.ZatcaSession', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='دورة ZATCA')
+    zatca_client  = models.ForeignKey('zatca.ZatcaClient', on_delete=models.SET_NULL, null=True, blank=True,
+                                       related_name='commission_entries', verbose_name='عميل ZATCA')
+    zatca_session = models.ForeignKey('zatca.ZatcaSession', on_delete=models.SET_NULL, null=True, blank=True,
+                                       related_name='commission_entries', verbose_name='دورة ZATCA')
     sales_rep = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
                                    related_name='commission_entries', verbose_name='المندوب')
     accountant_rep = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
                                         related_name='accountant_commission_entries', verbose_name='المحاسب')
     reviewer_rep = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
                                       related_name='reviewer_commission_entries', verbose_name='المراجع')
+    # نسخة محفوظة من بيانات العميل — تبقى بعد حذفه فلا يفقد السطر هويته
+    client_name_snapshot = models.CharField(max_length=250, blank=True, verbose_name='اسم العميل (محفوظ)')
+    client_company_snapshot = models.CharField(max_length=250, blank=True, verbose_name='الشركة (محفوظة)')
     is_confirmed = models.BooleanField(default=False, verbose_name='تم التأكيد ✓')
     entry_date = models.DateField(null=True, blank=True, verbose_name='تاريخ السطر')
     amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='المبلغ')
@@ -61,11 +66,10 @@ class CommissionEntry(models.Model):
         self.review_commission_amount = self._calc(rules.get('review'), self.amount)
 
     def __str__(self):
-        name = self.client.name if self.client else (self.review_client.name if self.review_client else (self.zatca_client.name if self.zatca_client else '—'))
-        return f"{name} - {self.amount}"
+        return f"{self.client_name} - {self.amount}"
 
-    @property
-    def client_name(self):
+    def _live_name(self):
+        """اسم العميل من السجل الحيّ — فارغ إذا حُذف العميل."""
         if self.client:
             return self.client.name
         if self.review_client:
@@ -74,17 +78,43 @@ class CommissionEntry(models.Model):
             return f"{self.zatca_session.client.name} ({self.zatca_session.start_date})"
         if self.zatca_client:
             return self.zatca_client.name
-        return '—'
+        return ''
 
-    @property
-    def client_company(self):
+    def _live_company(self):
         if self.client:
             return self.client.company or ''
         if self.review_client:
             return self.review_client.company or ''
+        if self.zatca_session:
+            return self.zatca_session.client.company or ''
         if self.zatca_client:
             return self.zatca_client.company or ''
         return ''
+
+    def sync_snapshot(self):
+        """يحفظ نسخة من بيانات العميل في السطر — تُستدعى قبل الحفظ."""
+        name = self._live_name()
+        if name:
+            self.client_name_snapshot = name[:250]
+            self.client_company_snapshot = (self._live_company() or '')[:250]
+        return self
+
+    def save(self, *args, **kwargs):
+        self.sync_snapshot()
+        super().save(*args, **kwargs)
+
+    @property
+    def is_orphan(self):
+        """السطر فقد عميله (حُذف) لكن بياناته المحفوظة باقية."""
+        return not self._live_name() and bool(self.client_name_snapshot)
+
+    @property
+    def client_name(self):
+        return self._live_name() or self.client_name_snapshot or '—'
+
+    @property
+    def client_company(self):
+        return self._live_company() or self.client_company_snapshot or ''
 
     @property
     def entry_type(self):

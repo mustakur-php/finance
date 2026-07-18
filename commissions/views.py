@@ -90,6 +90,8 @@ def commission_create(request):
                     amount=0,
                 ))
             if entries:
+                for e in entries:
+                    e.sync_snapshot()
                 CommissionEntry.objects.bulk_create(entries)
 
         log_action(request, AuditLog.ACTION_CREATE, obj=sheet,
@@ -264,6 +266,8 @@ def commission_refresh_sheet(request, pk):
         for s in new_sessions
     ]
     if entries:
+        for e in entries:
+            e.sync_snapshot()
         CommissionEntry.objects.bulk_create(entries)
         messages.success(request, f'تم إضافة {len(entries)} عميل جديد للشيت')
     else:
