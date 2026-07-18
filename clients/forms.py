@@ -125,12 +125,10 @@ class ClientForm(forms.ModelForm):
                 tenant=user.tenant, is_active=True)
             self.fields['activity'].empty_label = '-- اختر النشاط --'
             if user.is_admin:
-                self.fields['assigned_sales'].queryset = User.objects.filter(
-                    tenant=user.tenant, role=User.ROLE_SALES, is_active=True)
-                self.fields['assigned_accountant'].queryset = User.objects.filter(
-                    tenant=user.tenant, role=User.ROLE_ACCOUNTANT, is_active=True)
-                self.fields['assigned_review'].queryset = User.objects.filter(
-                    tenant=user.tenant, role=User.ROLE_REVIEW, is_active=True)
+                from accounts.utils import assignable_users
+                self.fields['assigned_sales'].queryset = assignable_users(user.tenant, User.ROLE_SALES)
+                self.fields['assigned_accountant'].queryset = assignable_users(user.tenant, User.ROLE_ACCOUNTANT)
+                self.fields['assigned_review'].queryset = assignable_users(user.tenant, User.ROLE_REVIEW)
             else:
                 self.fields.pop('assigned_sales', None)
                 self.fields.pop('assigned_accountant', None)

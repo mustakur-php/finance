@@ -57,8 +57,9 @@ def clients_list(request):
     cities = Client.objects.filter(tenant=request.user.tenant, is_active=True, client_type=Client.TYPE_ACTUAL).exclude(city='').values_list('city', flat=True).distinct().order_by('city')
     sales_users = accountant_users = []
     if request.user.is_admin:
-        sales_users = UserModel.objects.filter(tenant=request.user.tenant, role=UserModel.ROLE_SALES, is_active=True)
-        accountant_users = UserModel.objects.filter(tenant=request.user.tenant, role=UserModel.ROLE_ACCOUNTANT, is_active=True)
+        from accounts.utils import assignable_users
+        sales_users = assignable_users(request.user.tenant, UserModel.ROLE_SALES)
+        accountant_users = assignable_users(request.user.tenant, UserModel.ROLE_ACCOUNTANT)
     filters = {'q': q, 'city': city, 'district': district, 'activity': activity, 'sales': sales_id, 'accountant': accountant_id}
     from .models import ClientCommissionRule
     commission_rules = {(r.client_id, r.department): r for r in ClientCommissionRule.objects.filter(client__tenant=request.user.tenant)}
@@ -94,12 +95,13 @@ def targeted_list(request):
         clients = clients.filter(assigned_sales_id=sales_id)
     activities = Activity.objects.filter(tenant=request.user.tenant, is_active=True)
     cities = Client.objects.filter(tenant=request.user.tenant, is_active=True, client_type=Client.TYPE_POTENTIAL).exclude(city='').values_list('city', flat=True).distinct().order_by('city')
+    from accounts.utils import assignable_users
     sales_users = []
     if request.user.is_admin:
-        sales_users = UserModel.objects.filter(tenant=request.user.tenant, role=UserModel.ROLE_SALES, is_active=True)
+        sales_users = assignable_users(request.user.tenant, UserModel.ROLE_SALES)
     total_count = Client.objects.filter(tenant=request.user.tenant, client_type=Client.TYPE_POTENTIAL, converted_status='').count()
     filters = {'q': q, 'city': city, 'district': district, 'activity': activity, 'sales': sales_id}
-    accountant_users = UserModel.objects.filter(tenant=request.user.tenant, role=UserModel.ROLE_ACCOUNTANT, is_active=True)
+    accountant_users = assignable_users(request.user.tenant, UserModel.ROLE_ACCOUNTANT)
     paginator = Paginator(clients.order_by('-created_at'), 10)
     page_obj = paginator.get_page(request.GET.get('page'))
     return render(request, 'clients/targeted_list.html', {
@@ -258,7 +260,8 @@ def client_convert(request, pk):
         accountant_id = request.POST.get('accountant_id')
         accountant = None
         if accountant_id:
-            accountant = UserModel.objects.filter(pk=accountant_id, tenant=request.user.tenant, role=UserModel.ROLE_ACCOUNTANT).first()
+            from accounts.utils import assignable_users
+            accountant = assignable_users(request.user.tenant, UserModel.ROLE_ACCOUNTANT).filter(pk=accountant_id).first()
         period = request.POST.get('period_months', '1')
         period = int(period) if period in ('1', '3', '6', '12') else 1
         zatca_client = ZatcaClient.objects.create(
@@ -408,7 +411,8 @@ def client_detail(request, pk):
             messages.success(request, 'تم إضافة الملاحظة')
         return redirect('client_detail', pk=pk)
     from accounts.models import User as UserModel
-    accountant_users = UserModel.objects.filter(tenant=request.user.tenant, role=UserModel.ROLE_ACCOUNTANT, is_active=True)
+    from accounts.utils import assignable_users
+    accountant_users = assignable_users(request.user.tenant, UserModel.ROLE_ACCOUNTANT)
     return render(request, 'clients/detail.html', {'client': client, 'accountant_users': accountant_users})
 
 

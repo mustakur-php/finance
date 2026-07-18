@@ -32,11 +32,8 @@ def calendar_view(request):
     }
     source_users = []
     if source and source in source_role_map and request.user.is_admin:
-        source_users = UserModel.objects.filter(
-            tenant=request.user.tenant,
-            role=source_role_map[source],
-            is_active=True
-        )
+        from accounts.utils import assignable_users
+        source_users = assignable_users(request.user.tenant, source_role_map[source])
 
     return render(request, 'calendar_app/calendar.html', {
         'upcoming': upcoming,

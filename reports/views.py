@@ -180,9 +180,10 @@ def report_commissions(request):
     entries = CommissionEntry.objects.filter(sheet__tenant=tenant)
     entries = _apply_commission_filters(entries, date_from, date_to, role_filter, user_filter)
 
-    sales_users      = User.objects.filter(tenant=tenant, role='sales',      is_active=True)
-    accountant_users = User.objects.filter(tenant=tenant, role='accountant', is_active=True)
-    review_users     = User.objects.filter(tenant=tenant, role='review',     is_active=True)
+    from accounts.utils import assignable_users
+    sales_users      = assignable_users(tenant, User.ROLE_SALES)
+    accountant_users = assignable_users(tenant, User.ROLE_ACCOUNTANT)
+    review_users     = assignable_users(tenant, User.ROLE_REVIEW)
 
     totals = entries.aggregate(
         total_amount    = Sum('amount'),

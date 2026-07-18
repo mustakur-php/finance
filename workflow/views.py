@@ -80,8 +80,9 @@ def workflow_client_create(request):
             return redirect('workflow_client_create')
 
         from accounts.models import User
+        from accounts.utils import assignable_users
         reviewer_id = request.POST.get('assigned_reviewer')
-        reviewer = User.objects.filter(pk=reviewer_id, tenant=request.user.tenant, role='review').first() if reviewer_id else None
+        reviewer = assignable_users(request.user.tenant, User.ROLE_REVIEW).filter(pk=reviewer_id).first() if reviewer_id else None
 
         client = ReviewClient.objects.create(
             tenant             = request.user.tenant,
@@ -117,7 +118,8 @@ def workflow_client_create(request):
 
     from clients.forms import SAUDI_CITIES
     from accounts.models import User
-    reviewers = User.objects.filter(tenant=request.user.tenant, role='review', is_active=True)
+    from accounts.utils import assignable_users
+    reviewers = assignable_users(request.user.tenant, User.ROLE_REVIEW)
     return render(request, 'workflow/client_form.html', {
         'stage_choices': WorkflowStage.STAGE_CHOICES,
         'cities': SAUDI_CITIES,
@@ -133,7 +135,8 @@ def workflow_detail(request, pk):
         return redirect('workflow_list')
     stages = client.stages.all()
     from accounts.models import User
-    reviewers = User.objects.filter(tenant=request.user.tenant, role=User.ROLE_REVIEW, is_active=True)
+    from accounts.utils import assignable_users
+    reviewers = assignable_users(request.user.tenant, User.ROLE_REVIEW)
     return render(request, 'workflow/detail.html', {
         'client': client,
         'stages': stages,
@@ -251,7 +254,8 @@ def workflow_change_reviewer(request, pk):
     old_reviewer = client.assigned_reviewer.get_full_name() if client.assigned_reviewer else '—'
     if reviewer_id:
         from accounts.models import User
-        reviewer = get_object_or_404(User, pk=reviewer_id, tenant=request.user.tenant, role=User.ROLE_REVIEW)
+        from accounts.utils import assignable_users
+        reviewer = get_object_or_404(assignable_users(request.user.tenant, User.ROLE_REVIEW), pk=reviewer_id)
         client.assigned_reviewer = reviewer
     else:
         client.assigned_reviewer = None
