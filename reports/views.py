@@ -62,11 +62,17 @@ def reports_home(request):
     from commissions.models import CommissionEntry
     from calendar_app.models import Event
     from workflow.models import ReviewClient, WorkflowStage
+    from zatca.models import ZatcaClient, ZatcaSession
 
     tenant = request.user.tenant
     today  = timezone.localdate()
 
     ctx = {
+        'zatca_clients':   ZatcaClient.objects.filter(tenant=tenant).count(),
+        'zatca_sessions':  ZatcaSession.objects.filter(client__tenant=tenant).count(),
+        'zatca_active':    ZatcaSession.objects.filter(
+                               client__tenant=tenant,
+                               status=ZatcaSession.STATUS_IN_PROGRESS).count(),
         'total_clients':      Client.objects.filter(tenant=tenant, is_active=True, client_type='actual').count(),
         'total_targeted':     Client.objects.filter(tenant=tenant, is_active=True, client_type='potential').count(),
         'total_commission':   CommissionEntry.objects.filter(sheet__tenant=tenant).aggregate(
@@ -254,6 +260,146 @@ def report_events(request):
         'filters': {'date_from': date_from, 'date_to': date_to,
                     'user': user_filter, 'source': source_filter},
     })
+
+
+# ─────────────────────────────────────────
+# تقرير قسم ZATCA
+# ─────────────────────────────────────────
+def _zatca_report_data(request):
+    """يجهّز بيانات تقرير ZATCA — يُستخدم في العرض والتصدير."""
+    from zatca.models import ZatcaClient, ZatcaSession
+
+    tenant        = request.user.tenant
+    today         = timezone.localdate()
+    accountant_f  = request.GET.get('accountant', '')
+    period_f      = request.GET.get('period', '')
+    state_f       = request.GET.get('state', '')
+    date_from     = request.GET.get('date_from', '')
+    date_to       = request.GET.get('date_to', '')
+
+    clients = ZatcaClient.objects.filter(tenant=tenant).select_related(
+        'assigned_accountant').prefetch_related('sessions')
+    if accountant_f:
+        clients = clients.filter(assigned_accountant_id=accountant_f)
+    if period_f:
+        clients = clients.filter(period_months=period_f)
+
+    rows, tot_sessions, tot_completed, tot_active = [], 0, 0, 0
+    for c in clients:
+        sessions = sorted(c.sessions.all(), key=lambda s: s.start_date, reverse=True)
+        if date_from:
+            sessions = [s for s in sessions if str(s.start_date) >= date_from]
+        if date_to:
+            sessions = [s for s in sessions if str(s.start_date) <= date_to]
+
+        active = next((s for s in sessions if s.status == ZatcaSession.STATUS_IN_PROGRESS), None)
+        done   = [s for s in sessions if s.status == ZatcaSession.STATUS_COMPLETED]
+
+        if state_f == 'active' and not active:
+            continue
+        if state_f == 'idle' and (active or not sessions):
+            continue
+        if state_f == 'new' and sessions:
+            continue
+
+        tot_sessions  += len(sessions)
+        tot_completed += len(done)
+        if active:
+            tot_active += 1
+
+        rows.append({
+            'client': c,
+            'sessions': sessions,
+            'active': active,
+            'completed_count': len(done),
+            'total_count': len(sessions),
+            'last_completed': done[0] if done else None,
+            'next_start': c.next_session_start(),
+        })
+
+    rows.sort(key=lambda r: r['client'].name)
+    return {
+        'rows': rows,
+        'today': today,
+        'total_clients': len(rows),
+        'total_sessions': tot_sessions,
+        'total_completed': tot_completed,
+        'total_active': tot_active,
+        'filters': {'accountant': accountant_f, 'period': period_f,
+                    'state': state_f, 'date_from': date_from, 'date_to': date_to},
+    }
+
+
+@login_required
+@admin_required
+def report_zatca(request):
+    from accounts.utils import assignable_users
+    from accounts.models import User as UserModel
+    from zatca.models import ZatcaClient
+
+    ctx = _zatca_report_data(request)
+    ctx['accountants'] = assignable_users(request.user.tenant, UserModel.ROLE_ACCOUNTANT)
+    ctx['period_choices'] = ZatcaClient.PERIOD_CHOICES
+    return render(request, 'reports/zatca.html', ctx)
+
+
+@login_required
+@admin_required
+def export_zatca_excel(request):
+    import openpyxl
+
+    data = _zatca_report_data(request)
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'عملاء ZATCA'
+    _style_header(ws, ['العميل', 'الشركة', 'المحاسب', 'الفترة', 'إجمالي الدورات',
+                       'المكتملة', 'الدورة الحالية', 'الدورة القادمة'], fill_color='b45309')
+    for r in data['rows']:
+        c = r['client']
+        ws.append([
+            c.name, c.company or '',
+            c.assigned_accountant.get_full_name() if c.assigned_accountant else '—',
+            c.get_period_months_display(),
+            r['total_count'], r['completed_count'],
+            str(r['active'].start_date) if r['active'] else '—',
+            str(r['next_start']) if r['next_start'] else '—',
+        ])
+
+    ws2 = wb.create_sheet('تفاصيل الدورات')
+    _style_header(ws2, ['العميل', 'تاريخ البداية', 'تاريخ الانتهاء', 'الحالة', 'التقرير'],
+                  fill_color='b45309')
+    for r in data['rows']:
+        for s in r['sessions']:
+            ws2.append([
+                r['client'].name, str(s.start_date),
+                str(s.end_date) if s.end_date else '—',
+                s.get_status_display(),
+                'مرفوع' if s.report_file else '—',
+            ])
+
+    response = _make_excel_response('zatca.xlsx')
+    wb.save(response)
+    return response
+
+
+@login_required
+@admin_required
+def export_zatca_pdf(request):
+    data = _zatca_report_data(request)
+    username = request.user.get_full_name() or request.user.username
+    headers = ['العميل', 'الشركة', 'المحاسب', 'الفترة', 'الدورات', 'المكتملة', 'الحالية', 'القادمة']
+    rows = []
+    for r in data['rows']:
+        c = r['client']
+        rows.append([
+            c.name, c.company or '—',
+            c.assigned_accountant.get_full_name() if c.assigned_accountant else '—',
+            c.get_period_months_display(),
+            r['total_count'], r['completed_count'],
+            str(r['active'].start_date) if r['active'] else '—',
+            str(r['next_start']) if r['next_start'] else '—',
+        ])
+    return _render_pdf('تقرير قسم ZATCA', headers, rows, 'zatca.pdf', username)
 
 
 # ─────────────────────────────────────────

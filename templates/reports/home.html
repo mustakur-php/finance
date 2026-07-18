@@ -115,6 +115,20 @@
         </a>
     </div>
     <div class="col-md-4">
+        <a href="{% url 'report_zatca' %}" class="card text-decoration-none border-0 shadow-sm h-100">
+            <div class="card-body d-flex align-items-center gap-3 py-4">
+                <i class="bi bi-building fs-2" style="color:#b45309"></i>
+                <div>
+                    <div class="fw-bold">تقرير ZATCA</div>
+                    <div class="text-muted small">
+                        {{ zatca_clients }} عميل، {{ zatca_sessions }} دورة
+                        {% if zatca_active %}({{ zatca_active }} نشطة){% endif %}
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
         <a href="{% url 'report_users' %}" class="card text-decoration-none border-0 shadow-sm h-100">
             <div class="card-body d-flex align-items-center gap-3 py-4">
                 <i class="bi bi-person-gear fs-2 text-secondary"></i>
