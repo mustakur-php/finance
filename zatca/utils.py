@@ -16,6 +16,7 @@ def _build_reminder(client, date, today, opened):
         'date': date,
         'label': label,
         'tone': tone,
+        'days': abs(delta),
         'opened': opened,
     }
 

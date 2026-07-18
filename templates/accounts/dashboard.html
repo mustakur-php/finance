@@ -9,38 +9,57 @@
 
 {% block content %}
 {% if zatca_reminders %}
-<div class="card mb-4" style="border:none; border-right:5px solid #b45309; border-radius:10px; background:#fffbeb;">
-    <div class="card-body py-3">
-        <div class="d-flex align-items-center gap-2 mb-2">
-            <i class="bi bi-exclamation-triangle-fill" style="color:#b45309"></i>
-            <span class="fw-bold" style="color:#92400e">
-                {{ zatca_reminders|length }} من دورات ZATCA تحتاج انتباهك
-            </span>
-        </div>
-        <div class="row g-2">
+<div class="card mb-4 zatca-reminders">
+    <button type="button" class="zr-head" data-bs-toggle="collapse" data-bs-target="#zatcaReminders"
+            aria-expanded="false" aria-controls="zatcaReminders">
+        <span class="d-flex align-items-center gap-2">
+            <i class="bi bi-calendar-check" style="color:#0284c7; font-size:1.05rem"></i>
+            <span class="fw-semibold" style="color:#0f172a; font-size:0.9rem">دورات تحتاج انتباهك</span>
+            <span class="zr-count">{{ zatca_reminders|length }}</span>
+        </span>
+        <i class="bi bi-chevron-down zr-caret"></i>
+    </button>
+    <div class="collapse" id="zatcaReminders">
+        <div class="zr-list">
             {% for r in zatca_reminders %}
-            <div class="col-md-6">
-                <a href="{% url 'zatca_detail' r.client.pk %}" class="d-flex align-items-center justify-content-between text-decoration-none px-3 py-2"
-                   style="background:#fff; border:1px solid #fde68a; border-radius:8px;">
-                    <div class="d-flex align-items-center gap-2" style="min-width:0">
-                        <i class="bi {% if r.opened %}bi-play-circle{% else %}bi-plus-circle{% endif %} flex-shrink-0" style="color:#b45309; font-size:0.9rem"></i>
-                        <div style="min-width:0">
-                            <div class="fw-semibold text-truncate" style="color:#78350f; font-size:0.85rem">{{ r.client.name }}</div>
-                            <div class="text-muted" style="font-size:0.72rem">
-                                {{ r.date|date:"Y/m/d" }} — {% if r.opened %}دورة مفتوحة{% else %}لم تُفتح بعد{% endif %}
-                            </div>
-                        </div>
-                    </div>
-                    <span class="badge flex-shrink-0 ms-2" style="font-size:0.68rem;
-                        {% if r.tone == 'overdue' %}background:#dc2626{% elif r.tone == 'today' %}background:#b45309{% else %}background:#0284c7{% endif %}">
-                        {{ r.label }}
+            <a href="{% url 'zatca_detail' r.client.pk %}" class="zr-row">
+                <span class="zr-dot zr-{{ r.tone }}">
+                    <b>{% if r.tone == 'overdue' %}<i class="bi bi-exclamation-lg"></i>{% else %}{{ r.days }}{% endif %}</b>
+                    <span>{% if r.tone == 'overdue' %}متأخر{% elif r.tone == 'today' %}اليوم{% else %}يوم{% endif %}</span>
+                </span>
+                <span class="flex-grow-1" style="min-width:0">
+                    <span class="d-block text-truncate" style="font-size:0.85rem; font-weight:500; color:#0f172a">{{ r.client.name }}</span>
+                    <span class="d-block" style="font-size:0.72rem; color:#94a3b8">
+                        {{ r.date|date:"Y/m/d" }} · {% if r.opened %}دورة مفتوحة{% else %}لم تُفتح بعد{% endif %}
                     </span>
-                </a>
-            </div>
+                </span>
+                <i class="bi bi-chevron-left flex-shrink-0" style="color:#cbd5e1; font-size:0.8rem"></i>
+            </a>
             {% endfor %}
         </div>
     </div>
 </div>
+<style>
+.zatca-reminders { border:none; border-radius:12px; overflow:hidden; }
+.zr-head { width:100%; display:flex; align-items:center; justify-content:space-between;
+           background:#fff; border:none; padding:0.85rem 1rem; cursor:pointer; text-align:right; }
+.zr-head:hover { background:#f8fafc; }
+.zr-count { background:#e0f2fe; color:#0c4a6e; font-size:0.72rem; padding:2px 9px; border-radius:20px; }
+.zr-caret { color:#94a3b8; font-size:0.85rem; transition:transform .2s; }
+.zr-head[aria-expanded="true"] .zr-caret { transform:rotate(180deg); }
+.zr-list { border-top:1px solid #eef2f6; }
+.zr-row { display:flex; align-items:center; gap:12px; padding:0.7rem 1rem;
+          border-bottom:1px solid #f4f7fa; text-decoration:none; }
+.zr-row:last-child { border-bottom:none; }
+.zr-row:hover { background:#f8fafc; }
+.zr-dot { width:34px; height:34px; border-radius:50%; display:flex; flex-direction:column;
+          align-items:center; justify-content:center; flex-shrink:0; line-height:1; }
+.zr-dot b { font-size:0.8rem; font-weight:600; }
+.zr-dot > span { font-size:0.46rem; margin-top:1px; }
+.zr-overdue { background:#fee2e2; color:#991b1b; }
+.zr-today   { background:#fef3c7; color:#92400e; }
+.zr-soon    { background:#e0f2fe; color:#075985; }
+</style>
 {% endif %}
 
 <div class="row g-3 mb-4">
