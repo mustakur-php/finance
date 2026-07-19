@@ -53,13 +53,21 @@ def clients_list(request):
         clients = clients.filter(assigned_sales_id=sales_id)
     if accountant_id and request.user.is_admin:
         clients = clients.filter(assigned_accountant_id=accountant_id)
+    # وسم كل عميل بالأقسام الموجود فيها
+    from django.db.models import Exists, OuterRef
+    from workflow.models import ReviewClient
+    from zatca.models import ZatcaClient
+    clients = clients.annotate(
+        in_review=Exists(ReviewClient.objects.filter(source_client=OuterRef('pk'))),
+        in_zatca=Exists(ZatcaClient.objects.filter(source_client=OuterRef('pk'))),
+    )
     activities = Activity.objects.filter(tenant=request.user.tenant, is_active=True)
     cities = Client.objects.filter(tenant=request.user.tenant, is_active=True, client_type=Client.TYPE_ACTUAL).exclude(city='').values_list('city', flat=True).distinct().order_by('city')
-    sales_users = accountant_users = []
+    from accounts.utils import assignable_users
+    sales_users = []
+    accountant_users = assignable_users(request.user.tenant, UserModel.ROLE_ACCOUNTANT)
     if request.user.is_admin:
-        from accounts.utils import assignable_users
         sales_users = assignable_users(request.user.tenant, UserModel.ROLE_SALES)
-        accountant_users = assignable_users(request.user.tenant, UserModel.ROLE_ACCOUNTANT)
     filters = {'q': q, 'city': city, 'district': district, 'activity': activity, 'sales': sales_id, 'accountant': accountant_id}
     from .models import ClientCommissionRule
     commission_rules = {(r.client_id, r.department): r for r in ClientCommissionRule.objects.filter(client__tenant=request.user.tenant)}
@@ -278,12 +286,14 @@ def client_convert(request, pk):
     from django.utils import timezone
     client = get_object_or_404(Client, pk=pk, tenant=request.user.tenant)
     target = request.POST.get('target', 'actual')
+    # القائمة التي جاء منها المستخدم — يعود إليها بعد التحويل
+    back = 'clients_list' if client.client_type == Client.TYPE_ACTUAL else 'targeted_list'
 
     # منع تكرار التحويل لقسم موجود فيه العميل أصلاً
     if client.is_in_section(target):
         labels = {'actual': 'العملاء الفعليين', 'review': 'قسم المراجعة', 'zatca': 'قسم ZATCA'}
         messages.warning(request, f'"{client.name}" موجود بالفعل في {labels.get(target, target)}')
-        return redirect('targeted_list')
+        return redirect(back)
 
     if target == 'zatca':
         from zatca.models import ZatcaClient
@@ -321,8 +331,8 @@ def client_convert(request, pk):
         from audit_log.models import AuditLog
         log_action(request, AuditLog.ACTION_CREATE, obj=zatca_client)
         log_action(request, AuditLog.ACTION_UPDATE, obj=client,
-                   changes={'تحويل': {'من': 'مستهدف', 'إلى': 'ZATCA'}})
-        messages.success(request, f'تم تحويل "{client.name}" إلى قسم ZATCA')
+                   changes={'إضافة لقسم': {'من': '', 'إلى': 'ZATCA'}})
+        messages.success(request, f'تمت إضافة "{client.name}" إلى قسم ZATCA')
         return redirect('zatca_detail', pk=zatca_client.pk)
 
     elif target == 'review':
@@ -353,8 +363,8 @@ def client_convert(request, pk):
         from audit_log.utils import log_action
         from audit_log.models import AuditLog
         log_action(request, AuditLog.ACTION_UPDATE, obj=client,
-                   changes={'تحويل': {'من': 'مستهدف', 'إلى': 'قسم المراجعة'}})
-        messages.success(request, f'تم تحويل "{client.name}" إلى قسم المراجعة')
+                   changes={'إضافة لقسم': {'من': '', 'إلى': 'قسم المراجعة'}})
+        messages.success(request, f'تمت إضافة "{client.name}" إلى قسم المراجعة')
         return redirect('workflow_list')
     else:
         client.client_type = Client.TYPE_ACTUAL

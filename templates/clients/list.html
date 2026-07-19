@@ -78,7 +78,15 @@
             <tbody>
             {% for client in clients %}
                 <tr>
-                    <td><a href="{% url 'client_detail' client.pk %}" class="fw-semibold text-decoration-none">{{ client.name }}</a></td>
+                    <td>
+                        <a href="{% url 'client_detail' client.pk %}" class="fw-semibold text-decoration-none">{{ client.name }}</a>
+                        {% if client.in_review %}
+                        <span class="badge ms-1" style="background:#6a1b9a;font-size:0.62rem">المراجعة</span>
+                        {% endif %}
+                        {% if client.in_zatca %}
+                        <span class="badge ms-1" style="background:#b45309;font-size:0.62rem">ZATCA</span>
+                        {% endif %}
+                    </td>
                     <td>{{ client.company|default:"-" }}</td>
                     <td>{{ client.city|default:"-" }}</td>
                     <td>{{ client.district|default:"-" }}</td>
@@ -112,8 +120,37 @@
                     </td>
                     {% endif %}
                     <td>
-                        <a href="{% url 'client_detail' client.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
-                        <a href="{% url 'client_edit' client.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                        <div class="d-flex gap-1">
+                            <a href="{% url 'client_detail' client.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+                            <a href="{% url 'client_edit' client.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                            {% if not client.in_review or not client.in_zatca %}
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-success dropdown-toggle" data-bs-toggle="dropdown" title="إرسال لقسم">
+                                    <i class="bi bi-arrow-up-circle"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-start">
+                                    {% if not client.in_review %}
+                                    <li>
+                                        <form method="post" action="{% url 'client_convert' client.pk %}" onsubmit="return confirm('إرسال لقسم المراجعة؟')">
+                                            {% csrf_token %}<input type="hidden" name="target" value="review">
+                                            <button type="submit" class="dropdown-item">
+                                                <i class="bi bi-diagram-3 me-2" style="color:#6a1b9a"></i> قسم المراجعة
+                                            </button>
+                                        </form>
+                                    </li>
+                                    {% endif %}
+                                    {% if not client.in_zatca %}
+                                    <li>
+                                        <button type="button" class="dropdown-item" data-bs-toggle="modal"
+                                                data-bs-target="#zatcaModal{{ client.pk }}">
+                                            <i class="bi bi-building me-2" style="color:#b45309"></i> قسم ZATCA
+                                        </button>
+                                    </li>
+                                    {% endif %}
+                                </ul>
+                            </div>
+                            {% endif %}
+                        </div>
                     </td>
                 </tr>
             {% empty %}
@@ -153,4 +190,49 @@
     </div>
     {% endif %}
 </div>
+
+<!-- مودالات الإرسال إلى ZATCA -->
+{% for client in clients %}
+{% if not client.in_zatca %}
+<div class="modal fade" id="zatcaModal{{ client.pk }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" action="{% url 'client_convert' client.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="target" value="zatca">
+                <div class="modal-header">
+                    <h6 class="modal-title"><i class="bi bi-building me-2" style="color:#b45309"></i> إرسال إلى ZATCA</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">سيُضاف <strong>{{ client.name }}</strong> إلى قسم ZATCA مع بقائه عميلاً فعلياً.</p>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">المحاسب المسند</label>
+                        <select name="accountant_id" class="form-select form-select-sm">
+                            <option value="">— اختر محاسباً —</option>
+                            {% for u in accountant_users %}
+                            <option value="{{ u.pk }}">{{ u.get_full_name|default:u.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label fw-semibold">الفترة</label>
+                        <select name="period_months" class="form-select form-select-sm">
+                            <option value="1">شهري</option>
+                            <option value="3">ربع سنوي</option>
+                            <option value="6">نصف سنوي</option>
+                            <option value="12">سنوي</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-sm text-white" style="background:#b45309">تأكيد</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
 {% endblock %}
