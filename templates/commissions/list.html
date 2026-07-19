@@ -31,7 +31,7 @@
                     </td>
                     <td class="text-end fw-semibold">{{ sheet.total_amount|floatformat:2 }}</td>
                     <td class="text-end fw-bold text-success">{{ sheet.total_commission|floatformat:2 }}</td>
-                    <td><small class="text-muted">{{ sheet.created_by.get_full_name|default:sheet.created_by.username|default:"—" }}</small></td>
+                    <td><small class="text-muted">{% if sheet.created_by %}{{ sheet.created_by.get_full_name|default:sheet.created_by.username }}{% else %}—{% endif %}</small></td>
                     <td class="d-flex gap-1">
                         <a href="{% url 'commission_detail' sheet.pk %}" class="btn btn-sm btn-outline-primary">
                             <i class="bi bi-eye me-1"></i> فتح الشيت

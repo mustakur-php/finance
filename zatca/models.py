@@ -4,6 +4,8 @@ from django.conf import settings
 
 class ZatcaClient(models.Model):
     tenant             = models.ForeignKey('accounts.Tenant', on_delete=models.CASCADE, related_name='zatca_clients')
+    source_client      = models.ForeignKey('clients.Client', on_delete=models.SET_NULL, null=True, blank=True,
+                                            related_name='zatca_copies', verbose_name='العميل الأصلي')
     name               = models.CharField(max_length=200)
     company            = models.CharField(max_length=200, blank=True)
     phone              = models.CharField(max_length=30, blank=True)

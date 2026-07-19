@@ -55,6 +55,16 @@
                     </select>
                 </div>
                 {% endif %}
+                <div class="col-md-2">
+                    <select name="conv" class="form-select form-select-sm">
+                        <option value="new"       {% if filters.conv == 'new' %}selected{% endif %}>غير المحوّلين</option>
+                        <option value="all"       {% if filters.conv == 'all' %}selected{% endif %}>الكل</option>
+                        <option value="converted" {% if filters.conv == 'converted' %}selected{% endif %}>المحوّلون</option>
+                        <option value="review"    {% if filters.conv == 'review' %}selected{% endif %}>في المراجعة</option>
+                        <option value="zatca"     {% if filters.conv == 'zatca' %}selected{% endif %}>في ZATCA</option>
+                        <option value="both"      {% if filters.conv == 'both' %}selected{% endif %}>في القسمين</option>
+                    </select>
+                </div>
                 <div class="col-auto d-flex gap-1">
                     <button class="btn btn-primary btn-sm px-3">بحث</button>
                     <a href="{% url 'targeted_list' %}" class="btn btn-outline-secondary btn-sm">مسح</a>
@@ -81,7 +91,15 @@
             <tbody>
             {% for client in clients %}
                 <tr>
-                    <td><a href="{% url 'client_detail' client.pk %}" class="fw-semibold text-decoration-none">{{ client.name }}</a></td>
+                    <td>
+                        <a href="{% url 'client_detail' client.pk %}" class="fw-semibold text-decoration-none">{{ client.name }}</a>
+                        {% if client.in_review %}
+                        <span class="badge ms-1" style="background:#6a1b9a;font-size:0.62rem">المراجعة</span>
+                        {% endif %}
+                        {% if client.in_zatca %}
+                        <span class="badge ms-1" style="background:#b45309;font-size:0.62rem">ZATCA</span>
+                        {% endif %}
+                    </td>
                     <td>{{ client.company|default:"-" }}</td>
                     <td>{{ client.city|default:"-" }}</td>
                     <td>{{ client.district|default:"-" }}</td>
@@ -93,7 +111,7 @@
                     </td>
                     <td><small class="text-muted">{{ client.activity|default:"-" }}</small></td>
                     {% if request.user.is_admin %}
-                    <td><small class="text-muted">{{ client.created_by.get_full_name|default:client.created_by.username|default:"-" }}</small></td>
+                    <td><small class="text-muted">{% if client.created_by %}{{ client.created_by.get_full_name|default:client.created_by.username }}{% else %}-{% endif %}</small></td>
                     {% endif %}
                     {% if request.user.is_admin %}
                     <td class="text-center">

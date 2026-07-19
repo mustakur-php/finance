@@ -71,6 +71,30 @@ class Client(models.Model):
     def __str__(self):
         return f"{self.name} - {self.company}"
 
+    @property
+    def sections(self):
+        """
+        الأقسام التي يوجد فيها العميل فعلياً — تُحسب من السجلات لا من حقل نصّي،
+        فيمكن أن يكون في أكثر من قسم في نفس الوقت.
+        """
+        found = []
+        if self.client_type == self.TYPE_ACTUAL:
+            found.append(('actual', 'فعلي'))
+        if self.review_copies.exists():
+            found.append(('review', 'المراجعة'))
+        if self.zatca_copies.exists():
+            found.append(('zatca', 'ZATCA'))
+        return found
+
+    def is_in_section(self, section):
+        if section == 'review':
+            return self.review_copies.exists()
+        if section == 'zatca':
+            return self.zatca_copies.exists()
+        if section == 'actual':
+            return self.client_type == self.TYPE_ACTUAL
+        return False
+
     class Meta:
         verbose_name = 'عميل'
         verbose_name_plural = 'العملاء'

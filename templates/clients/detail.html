@@ -124,7 +124,7 @@
                 <hr>
                 {% for note in client.client_notes.all %}
                 <div class="border-bottom pb-2 mb-2">
-                    <small class="text-muted">{{ note.created_by.get_full_name|default:note.created_by.username }} — {{ note.created_at|date:"Y-m-d H:i" }}</small>
+                    <small class="text-muted">{% if note.created_by %}{{ note.created_by.get_full_name|default:note.created_by.username }}{% else %}—{% endif %} — {{ note.created_at|date:"Y-m-d H:i" }}</small>
                     <p class="mb-0 mt-1">{{ note.note }}</p>
                 </div>
                 {% empty %}

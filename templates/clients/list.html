@@ -100,7 +100,7 @@
                     </td>
                     <td><small class="text-muted">{{ client.activity|default:"-" }}</small></td>
                     {% if request.user.is_admin %}
-                    <td><small class="text-muted">{{ client.created_by.get_full_name|default:client.created_by.username|default:"-" }}</small></td>
+                    <td><small class="text-muted">{% if client.created_by %}{{ client.created_by.get_full_name|default:client.created_by.username }}{% else %}-{% endif %}</small></td>
                     {% endif %}
                     {% if request.user.is_admin %}
                     <td class="text-center">

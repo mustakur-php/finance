@@ -82,7 +82,6 @@ def targeted_list(request):
     district = request.GET.get('district', '')
     activity = request.GET.get('activity', '')
     sales_id = request.GET.get('sales', '')
-    clients = clients.filter(converted_status='')
     if q:
         clients = clients.filter(name__icontains=q) | clients.filter(company__icontains=q)
     if city:
@@ -93,14 +92,40 @@ def targeted_list(request):
         clients = clients.filter(activity_id=activity)
     if sales_id and request.user.is_admin:
         clients = clients.filter(assigned_sales_id=sales_id)
+    # وسم كل عميل بالأقسام الموجود فيها، وفلترة حسب حالة التحويل
+    from django.db.models import Exists, OuterRef, Q
+    from workflow.models import ReviewClient
+    from zatca.models import ZatcaClient
+    clients = clients.annotate(
+        in_review=Exists(ReviewClient.objects.filter(source_client=OuterRef('pk'))),
+        in_zatca=Exists(ZatcaClient.objects.filter(source_client=OuterRef('pk'))),
+    )
+    conv = request.GET.get('conv', 'new')
+    if conv == 'new':
+        clients = clients.filter(in_review=False, in_zatca=False)
+    elif conv == 'review':
+        clients = clients.filter(in_review=True)
+    elif conv == 'zatca':
+        clients = clients.filter(in_zatca=True)
+    elif conv == 'both':
+        clients = clients.filter(in_review=True, in_zatca=True)
+    elif conv == 'converted':
+        clients = clients.filter(Q(in_review=True) | Q(in_zatca=True))
+
     activities = Activity.objects.filter(tenant=request.user.tenant, is_active=True)
     cities = Client.objects.filter(tenant=request.user.tenant, is_active=True, client_type=Client.TYPE_POTENTIAL).exclude(city='').values_list('city', flat=True).distinct().order_by('city')
     from accounts.utils import assignable_users
     sales_users = []
     if request.user.is_admin:
         sales_users = assignable_users(request.user.tenant, UserModel.ROLE_SALES)
-    total_count = Client.objects.filter(tenant=request.user.tenant, client_type=Client.TYPE_POTENTIAL, converted_status='').count()
-    filters = {'q': q, 'city': city, 'district': district, 'activity': activity, 'sales': sales_id}
+    total_count = Client.objects.filter(
+        tenant=request.user.tenant, client_type=Client.TYPE_POTENTIAL
+    ).annotate(
+        in_review=Exists(ReviewClient.objects.filter(source_client=OuterRef('pk'))),
+        in_zatca=Exists(ZatcaClient.objects.filter(source_client=OuterRef('pk'))),
+    ).filter(in_review=False, in_zatca=False).count()
+    filters = {'q': q, 'city': city, 'district': district, 'activity': activity,
+               'sales': sales_id, 'conv': conv}
     accountant_users = assignable_users(request.user.tenant, UserModel.ROLE_ACCOUNTANT)
     paginator = Paginator(clients.order_by('-created_at'), 10)
     page_obj = paginator.get_page(request.GET.get('page'))
@@ -251,8 +276,14 @@ def client_convert(request, pk):
     if request.method != 'POST':
         return redirect('targeted_list')
     from django.utils import timezone
-    client = get_object_or_404(Client, pk=pk, tenant=request.user.tenant, client_type=Client.TYPE_POTENTIAL)
+    client = get_object_or_404(Client, pk=pk, tenant=request.user.tenant)
     target = request.POST.get('target', 'actual')
+
+    # منع تكرار التحويل لقسم موجود فيه العميل أصلاً
+    if client.is_in_section(target):
+        labels = {'actual': 'العملاء الفعليين', 'review': 'قسم المراجعة', 'zatca': 'قسم ZATCA'}
+        messages.warning(request, f'"{client.name}" موجود بالفعل في {labels.get(target, target)}')
+        return redirect('targeted_list')
 
     if target == 'zatca':
         from zatca.models import ZatcaClient
@@ -266,6 +297,7 @@ def client_convert(request, pk):
         period = int(period) if period in ('1', '3', '6', '12') else 1
         zatca_client = ZatcaClient.objects.create(
             tenant=client.tenant,
+            source_client=client,
             name=client.name,
             company=client.company,
             phone=client.phone,
@@ -298,6 +330,7 @@ def client_convert(request, pk):
         from workflow.views import _create_stages
         review_client = ReviewClient.objects.create(
             tenant=client.tenant,
+            source_client=client,
             name=client.name,
             company=client.company,
             phone=client.phone,
