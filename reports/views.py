@@ -11,6 +11,15 @@ def _date_filters(request):
     return date_from, date_to
 
 
+def _zatca_state_label(client):
+    """حالة عميل ZATCA مشتقّة من دوراته (لا يوجد حقل حالة على العميل)."""
+    from zatca.models import ZatcaSession
+    sessions = list(client.sessions.all())
+    if any(s.status == ZatcaSession.STATUS_IN_PROGRESS for s in sessions):
+        return 'دورة نشطة'
+    return 'بدون دورة نشطة' if sessions else 'لم تبدأ'
+
+
 def _apply_commission_filters(entries, date_from, date_to, role_filter, user_filter):
     """Apply all commissions filters to an entries queryset. Used by view + exports."""
     if date_from:
@@ -565,7 +574,8 @@ def export_clients_excel(request):
         ])
 
     from zatca.models import ZatcaClient
-    zatca_qs2 = ZatcaClient.objects.filter(tenant=tenant).select_related('assigned_accountant')
+    zatca_qs2 = ZatcaClient.objects.filter(tenant=tenant).select_related(
+        'assigned_accountant').prefetch_related('sessions')
     if date_from:
         zatca_qs2 = zatca_qs2.filter(created_at__date__gte=date_from)
     if date_to:
@@ -579,7 +589,7 @@ def export_clients_excel(request):
         ws3.append([
             c.name, c.company, c.city, c.phone,
             c.assigned_accountant.get_full_name() if c.assigned_accountant else '',
-            c.get_status_display(),
+            _zatca_state_label(c),
             str(c.created_at.date()) if c.created_at else '',
         ])
 
