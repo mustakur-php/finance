@@ -34,8 +34,9 @@
                         </div>
                         <div class="text-muted small mt-1">
                             <i class="bi bi-clock me-1"></i>{{ event.start_datetime|date:"H:i" }}
-                            {% if event.client %}
-                            &nbsp;|&nbsp;<i class="bi bi-person me-1"></i>{{ event.client.name }}
+                            {% if event.linked_client %}
+                            &nbsp;|&nbsp;<i class="bi bi-person me-1"></i>{{ event.client_name }}
+                            <span class="badge bg-light text-dark border ms-1" style="font-size:0.62rem">{{ event.client_section }}</span>
                             {% endif %}
                             {% if event.source %}
                             &nbsp;|&nbsp;<i class="bi bi-diagram-3 me-1"></i>{{ event.get_source_display }}

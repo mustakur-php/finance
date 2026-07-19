@@ -85,7 +85,7 @@ def send_event_reminders():
         reminder_sent=False,
         start_datetime__gte=reminder_start,
         start_datetime__lte=reminder_end,
-    ).select_related('assigned_to', 'client')
+    ).select_related('assigned_to', 'client', 'review_client', 'zatca_client')
 
     sent = 0
     for event in events:
@@ -95,7 +95,7 @@ def send_event_reminders():
             f"العنوان: {event.title}\n"
             f"النوع: {event.get_event_type_display()}\n"
             f"الوقت: {event.start_datetime.strftime('%Y-%m-%d %H:%M')}\n"
-            f"{'العميل: ' + event.client.name if event.client else ''}"
+            f"{'العميل: ' + event.client_name + ' (' + event.client_section + ')' if event.linked_client else ''}"
         )
         if notify_user(user, 'تذكير بحدث غداً', msg):
             event.reminder_sent = True

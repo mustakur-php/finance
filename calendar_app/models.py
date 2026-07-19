@@ -33,6 +33,10 @@ class Event(models.Model):
     source = models.CharField(max_length=20, choices=SOURCE_CHOICES, blank=True, verbose_name='القسم')
     client = models.ForeignKey('clients.Client', on_delete=models.SET_NULL,
                                 null=True, blank=True, related_name='events', verbose_name='العميل')
+    review_client = models.ForeignKey('workflow.ReviewClient', on_delete=models.SET_NULL,
+                                       null=True, blank=True, related_name='events', verbose_name='عميل المراجعة')
+    zatca_client = models.ForeignKey('zatca.ZatcaClient', on_delete=models.SET_NULL,
+                                      null=True, blank=True, related_name='events', verbose_name='عميل ZATCA')
     assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
                                      related_name='events', verbose_name='مسند إلى')
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
@@ -55,6 +59,38 @@ class Event(models.Model):
     is_done = models.BooleanField(default=False, verbose_name='منجز')  # kept for compatibility
     reminder_sent = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def linked_client(self):
+        """العميل المرتبط بالحدث من أي قسم."""
+        return self.client or self.review_client or self.zatca_client
+
+    @property
+    def client_name(self):
+        c = self.linked_client
+        return c.name if c else ''
+
+    @property
+    def client_section(self):
+        """اسم القسم الذي ينتمي له عميل الحدث."""
+        if self.client:
+            return 'فعلي' if self.client.client_type == 'actual' else 'مستهدف'
+        if self.review_client:
+            return 'مراجعة'
+        if self.zatca_client:
+            return 'ZATCA'
+        return ''
+
+    @property
+    def client_url_name(self):
+        """اسم المسار المناسب لصفحة العميل حسب قسمه."""
+        if self.client:
+            return 'client_detail'
+        if self.review_client:
+            return 'workflow_detail'
+        if self.zatca_client:
+            return 'zatca_detail'
+        return ''
 
     def get_status_color(self):
         return {

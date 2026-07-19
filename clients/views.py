@@ -324,9 +324,10 @@ def client_convert(request, pk):
         messages.success(request, f'تم تحويل "{client.name}" إلى قسم المراجعة')
         return redirect('workflow_list')
     else:
+        client.client_type = Client.TYPE_ACTUAL
         client.converted_status = Client.CONVERTED_ACTUAL
         client.converted_at = timezone.now()
-        client.save(update_fields=['converted_status', 'converted_at'])
+        client.save(update_fields=['client_type', 'converted_status', 'converted_at'])
         from audit_log.utils import log_action
         from audit_log.models import AuditLog
         log_action(request, AuditLog.ACTION_UPDATE, obj=client,

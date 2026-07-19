@@ -66,10 +66,11 @@
                         </span>
                     </td>
                     <td>
-                        {% if event.client %}
-                        <a href="{% url 'client_detail' event.client.pk %}" class="text-decoration-none">
-                            {{ event.client.name }}
+                        {% if event.linked_client %}
+                        <a href="{% url event.client_url_name event.linked_client.pk %}" class="text-decoration-none">
+                            {{ event.client_name }}
                         </a>
+                        <span class="badge bg-light text-dark border ms-1" style="font-size:0.62rem">{{ event.client_section }}</span>
                         {% else %}<span class="text-muted">—</span>{% endif %}
                     </td>
                     <td>{{ event.start_datetime|date:"Y/m/d" }}<br><small class="text-muted">{{ event.start_datetime|date:"H:i" }}</small></td>

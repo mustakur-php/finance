@@ -30,9 +30,12 @@
                 <div class="col-12">
                     <label class="form-label">العميل</label>
                     {% if event %}
-                    <div class="form-control bg-light text-muted">{{ event.client|default:"—" }}</div>
+                    <div class="form-control bg-light text-muted">
+                        {% if event.linked_client %}{{ event.client_name }} ({{ event.client_section }}){% else %}—{% endif %}
+                    </div>
                     {% else %}
-                    {{ form.client }}
+                    {{ form.client_ref }}
+                    <div class="form-text">العملاء مجمّعون حسب القسم — فعليون، مستهدفون، مراجعة، ZATCA</div>
                     {% endif %}
                 </div>
                 {% if form.assigned_to %}
