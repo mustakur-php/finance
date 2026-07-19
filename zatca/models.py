@@ -66,6 +66,12 @@ class ZatcaSession(models.Model):
     end_date    = models.DateField(null=True, blank=True, verbose_name='تاريخ الانتهاء')
     status      = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_IN_PROGRESS)
     report_file = models.FileField(upload_to='zatca/sessions/', null=True, blank=True, verbose_name='تقرير الدورة')
+    # اختياري — يُترك فارغاً فترث الدورة محاسب العميل، ويُملأ فقط عند إسناد دورة لمحاسب مختلف
+    assigned_accountant = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='zatca_sessions',
+        verbose_name='محاسب الدورة'
+    )
     notes       = models.TextField(blank=True)
     created_by  = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
@@ -80,3 +86,14 @@ class ZatcaSession(models.Model):
 
     def __str__(self):
         return f'{self.client.name} — {self.start_date}'
+
+    @property
+    def effective_accountant(self):
+        """محاسب الدورة إن أُسند لها، وإلا محاسب العميل."""
+        return self.assigned_accountant or self.client.assigned_accountant
+
+    @property
+    def has_custom_accountant(self):
+        """هل أُسندت الدورة لمحاسب مختلف عن محاسب العميل؟"""
+        return bool(self.assigned_accountant_id) and \
+            self.assigned_accountant_id != self.client.assigned_accountant_id

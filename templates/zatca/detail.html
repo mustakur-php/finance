@@ -98,6 +98,7 @@
                         <tr>
                             <th>تاريخ البداية</th>
                             <th>تاريخ الانتهاء</th>
+                            <th>المحاسب</th>
                             <th>الحالة</th>
                             <th>التقرير</th>
                             {% if request.user.is_admin %}<th></th>{% endif %}
@@ -108,6 +109,20 @@
                         <tr>
                             <td>{{ s.start_date }}</td>
                             <td>{{ s.end_date|default:"—" }}</td>
+                            <td>
+                                {% if s.effective_accountant %}
+                                {{ s.effective_accountant.get_full_name|default:s.effective_accountant.username }}
+                                {% else %}<span class="text-muted">—</span>{% endif %}
+                                {% if s.has_custom_accountant %}
+                                <span class="badge bg-info text-dark ms-1" style="font-size:0.6rem" title="محاسب خاص بهذه الدورة">مخصص</span>
+                                {% endif %}
+                                {% if request.user.is_admin %}
+                                <button class="btn btn-link btn-sm p-0 ms-1" data-bs-toggle="modal"
+                                        data-bs-target="#assignModal{{ s.pk }}" title="تغيير محاسب الدورة">
+                                    <i class="bi bi-pencil-square" style="font-size:0.75rem"></i>
+                                </button>
+                                {% endif %}
+                            </td>
                             <td>
                                 {% if s.status == 'completed' %}
                                 <span class="badge bg-success">مكتملة</span>
@@ -177,6 +192,43 @@
         </div>
     </div>
 </div>
+
+<!-- مودالات تغيير محاسب الدورة -->
+{% if request.user.is_admin %}
+{% for s in sessions %}
+<div class="modal fade" id="assignModal{{ s.pk }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" action="{% url 'zatca_session_assign' s.pk %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h6 class="modal-title"><i class="bi bi-person-badge me-2"></i> محاسب دورة {{ s.start_date }}</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label fw-semibold">المحاسب</label>
+                    <select name="accountant_id" class="form-select form-select-sm">
+                        <option value="">
+                            — محاسب العميل ({% if client.assigned_accountant %}{{ client.assigned_accountant.get_full_name|default:client.assigned_accountant.username }}{% else %}غير مسند{% endif %}) —
+                        </option>
+                        {% for u in accountants %}
+                        <option value="{{ u.pk }}" {% if s.assigned_accountant_id == u.pk %}selected{% endif %}>
+                            {{ u.get_full_name|default:u.username }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">اتركه على الخيار الأول لترث الدورة محاسب العميل تلقائياً.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary btn-sm">حفظ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endif %}
 
 <!-- Modal دورة جديدة -->
 <div class="modal fade" id="newSessionModal" tabindex="-1">

@@ -39,9 +39,13 @@ def zatca_reminders(user, days_ahead=2):
     today = timezone.localdate()
     horizon = today + timedelta(days=days_ahead)
 
+    from django.db.models import Q
     clients = ZatcaClient.objects.filter(tenant=user.tenant)
     if user.is_accountant and not user.is_admin:
-        clients = clients.filter(assigned_accountant=user)
+        # عملاؤه المسندون + أي عميل أُسندت له إحدى دوراته
+        clients = clients.filter(
+            Q(assigned_accountant=user) | Q(sessions__assigned_accountant=user)
+        ).distinct()
     clients = clients.prefetch_related('sessions')
 
     reminders = []

@@ -153,6 +153,7 @@
                         <th>#</th>
                         <th>تاريخ البداية</th>
                         <th>تاريخ الانتهاء</th>
+                        <th>المحاسب</th>
                         <th>المدة</th>
                         <th>الحالة</th>
                         <th>التقرير</th>
@@ -164,6 +165,14 @@
                         <td class="text-muted">{{ forloop.revcounter }}</td>
                         <td>{{ s.start_date }}</td>
                         <td>{{ s.end_date|default:"—" }}</td>
+                        <td>
+                            {% if s.effective_accountant %}
+                            {{ s.effective_accountant.get_full_name|default:s.effective_accountant.username }}
+                            {% else %}<span class="text-muted">—</span>{% endif %}
+                            {% if s.has_custom_accountant %}
+                            <span class="badge bg-info text-dark ms-1" style="font-size:0.58rem">مخصص</span>
+                            {% endif %}
+                        </td>
                         <td class="text-muted">
                             {% if s.end_date %}{{ s.start_date|timesince:s.end_date }}{% else %}—{% endif %}
                         </td>

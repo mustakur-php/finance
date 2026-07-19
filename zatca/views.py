@@ -14,10 +14,17 @@ def _log(request, action, **kwargs):
 
 
 def _can_access_zatca(user, client):
-    """المحاسب يتصرف فقط بعملائه المسندين؛ الأدمن بالجميع."""
+    """
+    الأدمن يصل للجميع. والمحاسب يصل لعملائه المسندين،
+    وكذلك لأي عميل أُسندت له إحدى دوراته (دورة يمسكها محاسب مختلف).
+    """
     if user.is_admin:
         return True
-    return user.is_accountant and client.assigned_accountant_id == user.id
+    if not user.is_accountant:
+        return False
+    if client.assigned_accountant_id == user.id:
+        return True
+    return client.sessions.filter(assigned_accountant_id=user.id).exists()
 
 
 @login_required
@@ -28,7 +35,10 @@ def zatca_list(request):
     from django.db.models import Exists, OuterRef, Q
     qs = ZatcaClient.objects.filter(tenant=request.user.tenant)
     if request.user.is_accountant and not request.user.is_admin:
-        qs = qs.filter(assigned_accountant=request.user)
+        # عملاؤه المسندون + أي عميل أُسندت له إحدى دوراته
+        qs = qs.filter(
+            Q(assigned_accountant=request.user) | Q(sessions__assigned_accountant=request.user)
+        ).distinct()
 
     active_subq = ZatcaSession.objects.filter(
         client=OuterRef('pk'), status=ZatcaSession.STATUS_IN_PROGRESS
@@ -73,18 +83,20 @@ def zatca_detail(request, pk):
         return redirect('dashboard')
 
     client = get_object_or_404(ZatcaClient, pk=pk, tenant=request.user.tenant)
-    if request.user.is_accountant and not request.user.is_admin:
-        if client.assigned_accountant != request.user:
-            messages.error(request, 'ليس لديك صلاحية عرض هذا العميل')
-            return redirect('zatca_list')
-    sessions = client.sessions.all()
+    if not _can_access_zatca(request.user, client):
+        messages.error(request, 'ليس لديك صلاحية عرض هذا العميل')
+        return redirect('zatca_list')
+    sessions = client.sessions.select_related('assigned_accountant', 'client__assigned_accountant')
     active_session = sessions.filter(status=ZatcaSession.STATUS_IN_PROGRESS).first()
     next_start = client.next_session_start()
+    from accounts.models import User as UserModel
+    from accounts.utils import assignable_users
     return render(request, 'zatca/detail.html', {
         'client': client,
         'sessions': sessions,
         'active_session': active_session,
         'next_start': next_start,
+        'accountants': assignable_users(request.user.tenant, UserModel.ROLE_ACCOUNTANT),
     })
 
 
@@ -93,10 +105,9 @@ def zatca_edit(request, pk):
     if not (request.user.is_admin or request.user.is_accountant):
         return redirect('dashboard')
     client = get_object_or_404(ZatcaClient, pk=pk, tenant=request.user.tenant)
-    if request.user.is_accountant and not request.user.is_admin:
-        if client.assigned_accountant != request.user:
-            messages.error(request, 'ليس لديك صلاحية تعديل هذا العميل')
-            return redirect('zatca_list')
+    if not _can_access_zatca(request.user, client):
+        messages.error(request, 'ليس لديك صلاحية تعديل هذا العميل')
+        return redirect('zatca_list')
     if request.method == 'POST':
         client.name               = request.POST.get('name', '').strip() or client.name
         client.company            = request.POST.get('company', '').strip()
@@ -217,6 +228,39 @@ def zatca_session_complete(request, session_pk):
 
     # عمولة الدورة تُسحب تلقائياً عند إنشاء/تحديث شيت العمولات إذا كان العميل خاضعاً للعمولة
     messages.success(request, 'تم إكمال الدورة بنجاح')
+    return redirect('zatca_detail', pk=client.pk)
+
+
+@login_required
+@admin_required
+def zatca_session_assign(request, session_pk):
+    """تغيير محاسب دورة بعينها — اختياري، وتركه فارغاً يعيدها لمحاسب العميل."""
+    if request.method != 'POST':
+        return redirect('zatca_list')
+    session = get_object_or_404(ZatcaSession, pk=session_pk)
+    client = session.client
+    if client.tenant != request.user.tenant:
+        return redirect('zatca_list')
+
+    from accounts.models import User as UserModel
+    from accounts.utils import assignable_users
+    old = session.effective_accountant
+    accountant_id = request.POST.get('accountant_id') or ''
+    if accountant_id:
+        session.assigned_accountant = assignable_users(
+            request.user.tenant, UserModel.ROLE_ACCOUNTANT
+        ).filter(pk=accountant_id).first()
+    else:
+        session.assigned_accountant = None
+    session.save(update_fields=['assigned_accountant'])
+
+    def _name(u):
+        return (u.get_full_name() or u.username) if u else '—'
+
+    from audit_log.models import AuditLog
+    _log(request, AuditLog.ACTION_UPDATE, obj=session,
+         changes={'محاسب الدورة': {'من': _name(old), 'إلى': _name(session.effective_accountant)}})
+    messages.success(request, f'تم تحديث محاسب دورة {session.start_date}')
     return redirect('zatca_detail', pk=client.pk)
 
 

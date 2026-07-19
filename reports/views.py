@@ -287,9 +287,13 @@ def _zatca_report_data(request):
     date_to       = request.GET.get('date_to', '')
 
     clients = ZatcaClient.objects.filter(tenant=tenant).select_related(
-        'assigned_accountant').prefetch_related('sessions')
+        'assigned_accountant').prefetch_related('sessions__assigned_accountant')
     if accountant_f:
-        clients = clients.filter(assigned_accountant_id=accountant_f)
+        # يشمل محاسب العميل ومحاسبي الدورات المخصصة
+        clients = clients.filter(
+            Q(assigned_accountant_id=accountant_f) |
+            Q(sessions__assigned_accountant_id=accountant_f)
+        ).distinct()
     if period_f:
         clients = clients.filter(period_months=period_f)
 
@@ -375,13 +379,15 @@ def export_zatca_excel(request):
         ])
 
     ws2 = wb.create_sheet('تفاصيل الدورات')
-    _style_header(ws2, ['العميل', 'تاريخ البداية', 'تاريخ الانتهاء', 'الحالة', 'التقرير'],
+    _style_header(ws2, ['العميل', 'تاريخ البداية', 'تاريخ الانتهاء', 'المحاسب', 'الحالة', 'التقرير'],
                   fill_color='b45309')
     for r in data['rows']:
         for s in r['sessions']:
+            acc = s.effective_accountant
             ws2.append([
                 r['client'].name, str(s.start_date),
                 str(s.end_date) if s.end_date else '—',
+                acc.get_full_name() or acc.username if acc else '—',
                 s.get_status_display(),
                 'مرفوع' if s.report_file else '—',
             ])

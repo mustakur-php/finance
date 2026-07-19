@@ -61,7 +61,7 @@ def commission_create(request):
                 client__tenant=request.user.tenant,
                 client__is_commissionable=True,
                 status=ZatcaSession.STATUS_COMPLETED,
-            ).exclude(id__in=used_session_ids).select_related('client', 'client__assigned_accountant')
+            ).exclude(id__in=used_session_ids).select_related('client', 'client__assigned_accountant', 'assigned_accountant')
 
             entries = []
             for client in actual_clients:
@@ -86,7 +86,7 @@ def commission_create(request):
                     sheet=sheet,
                     zatca_client=session.client,
                     zatca_session=session,
-                    accountant_rep=session.client.assigned_accountant,
+                    accountant_rep=session.effective_accountant,
                     amount=0,
                 ))
             if entries:
@@ -238,7 +238,7 @@ def commission_refresh_sheet(request, pk):
         client__tenant=request.user.tenant,
         client__is_commissionable=True,
         status=ZatcaSession.STATUS_COMPLETED,
-    ).exclude(id__in=used_session_ids).select_related('client', 'client__assigned_accountant')
+    ).exclude(id__in=used_session_ids).select_related('client', 'client__assigned_accountant', 'assigned_accountant')
 
     entries = [
         CommissionEntry(
@@ -260,7 +260,7 @@ def commission_refresh_sheet(request, pk):
     ] + [
         CommissionEntry(
             sheet=sheet, zatca_client=s.client, zatca_session=s,
-            accountant_rep=s.client.assigned_accountant,
+            accountant_rep=s.effective_accountant,
             amount=0,
         )
         for s in new_sessions
