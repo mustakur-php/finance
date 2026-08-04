@@ -41,6 +41,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'accounts.middleware.TenantMiddleware',
+    'accounts.middleware.DeveloperAccessMiddleware',
     'superadmin_panel.middleware.SubscriptionMiddleware',
 ]
 

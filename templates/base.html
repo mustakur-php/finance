@@ -56,6 +56,7 @@
         <small>{{ user.get_full_name|default:user.username }} — {{ user.get_role_display }}</small>
     </div>
     <nav class="mt-2">
+        {% if not user.is_developer %}
         <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
             <i class="bi bi-speedometer2"></i> لوحة التحكم
         </a>
@@ -65,6 +66,7 @@
         <a href="{% url 'targeted_list' %}" class="nav-link {% if request.resolver_match.url_name == 'targeted_list' %}active{% endif %}">
             <i class="bi bi-crosshair"></i> العملاء المستهدفون
         </a>
+        {% endif %}
         {% if user.is_admin or user.is_sales %}
         <a href="{% url 'events_history' %}" class="nav-link {% if request.resolver_match.url_name == 'events_history' %}active{% endif %}">
             <i class="bi bi-clock-history"></i> سجل الأحداث
@@ -75,9 +77,11 @@
             <i class="bi bi-cash-stack"></i> العمولات
         </a>
         {% endif %}
+        {% if not user.is_developer %}
         <a href="{% url 'calendar_view' %}" class="nav-link {% if request.resolver_match.url_name == 'calendar_view' %}active{% endif %}">
             <i class="bi bi-calendar3"></i> التقويم
         </a>
+        {% endif %}
         {% if user.is_admin or user.is_review %}
         <a href="{% url 'workflow_list' %}" class="nav-link {% if 'workflow' in request.resolver_match.url_name %}active{% endif %}">
             <i class="bi bi-diagram-3"></i> قسم المراجعة
