@@ -17,8 +17,8 @@
                     {% if m.sender %}{{ m.sender.get_full_name|default:m.sender.username }}{% else %}مستخدم محذوف{% endif %}
                     — {{ m.created_at|date:"Y/m/d H:i" }}
                 </div>
-                <div class="px-3 py-2"
-                     style="display:inline-block; border-radius:14px; white-space:pre-wrap; word-break:break-word; text-align:right;
+                <div style="display:inline-block; padding:6px 10px; border-radius:12px; font-size:0.88rem; line-height:1.35;
+                     white-space:pre-wrap; word-break:break-word; text-align:right;
                      {% if m.sender_id == request.user.id %}background:#0ea5e9; color:#fff;
                      {% else %}background:#f1f5f9; color:#0f172a;{% endif %}">
                     {{ m.body }}
