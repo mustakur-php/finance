@@ -137,10 +137,12 @@
                                         <i class="bi bi-download"></i> تحميل
                                     </a>
                                     {% else %}<span class="text-muted">—</span>{% endif %}
+                                    {% if request.user.is_admin %}
                                     <button type="button" class="btn btn-outline-secondary btn-sm py-0" data-bs-toggle="modal"
                                             data-bs-target="#replaceReportModal{{ s.pk }}" title="استبدال التقرير">
                                         <i class="bi bi-arrow-repeat"></i>
                                     </button>
+                                    {% endif %}
                                 </div>
                             </td>
                             {% if request.user.is_admin %}
@@ -237,6 +239,7 @@
 {% endif %}
 
 <!-- مودالات استبدال تقرير الدورة -->
+{% if request.user.is_admin %}
 {% for s in sessions %}
 <div class="modal fade" id="replaceReportModal{{ s.pk }}" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
@@ -265,6 +268,7 @@
     </div>
 </div>
 {% endfor %}
+{% endif %}
 
 <!-- Modal دورة جديدة -->
 <div class="modal fade" id="newSessionModal" tabindex="-1">

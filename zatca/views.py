@@ -297,16 +297,17 @@ def zatca_session_delete(request, session_pk):
 
 
 @login_required
+@admin_required
 def zatca_session_replace_report(request, session_pk):
     """
     استبدال تقرير دورة (حتى لو مكتملة) دون تغيير حالتها أو تواريخها —
-    للحالات التي يُرفع فيها ملف بالخطأ.
+    للحالات التي يُرفع فيها ملف بالخطأ. للأدمن فقط.
     """
     if request.method != 'POST':
         return redirect('zatca_list')
     session = get_object_or_404(ZatcaSession, pk=session_pk)
     client = session.client
-    if client.tenant != request.user.tenant or not _can_access_zatca(request.user, client):
+    if client.tenant != request.user.tenant:
         return redirect('zatca_list')
 
     report = request.FILES.get('report_file')
