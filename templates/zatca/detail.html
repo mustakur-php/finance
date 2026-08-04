@@ -131,11 +131,17 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% if s.report_file %}
-                                <a href="{{ s.report_file.url }}" target="_blank" class="btn btn-outline-success btn-sm py-0">
-                                    <i class="bi bi-download"></i> تحميل
-                                </a>
-                                {% else %}—{% endif %}
+                                <div class="d-flex align-items-center gap-1">
+                                    {% if s.report_file %}
+                                    <a href="{{ s.report_file.url }}" target="_blank" class="btn btn-outline-success btn-sm py-0">
+                                        <i class="bi bi-download"></i> تحميل
+                                    </a>
+                                    {% else %}<span class="text-muted">—</span>{% endif %}
+                                    <button type="button" class="btn btn-outline-secondary btn-sm py-0" data-bs-toggle="modal"
+                                            data-bs-target="#replaceReportModal{{ s.pk }}" title="استبدال التقرير">
+                                        <i class="bi bi-arrow-repeat"></i>
+                                    </button>
+                                </div>
                             </td>
                             {% if request.user.is_admin %}
                             <td>
@@ -229,6 +235,36 @@
 </div>
 {% endfor %}
 {% endif %}
+
+<!-- مودالات استبدال تقرير الدورة -->
+{% for s in sessions %}
+<div class="modal fade" id="replaceReportModal{{ s.pk }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" action="{% url 'zatca_session_replace_report' s.pk %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h6 class="modal-title"><i class="bi bi-arrow-repeat me-2"></i> استبدال تقرير دورة {{ s.start_date }}</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    {% if s.report_file %}
+                    <p class="text-muted small mb-2">التقرير الحالي: {{ s.report_file.name|slice:"14:" }}</p>
+                    {% endif %}
+                    <label class="form-label fw-semibold">الملف الجديد <span class="text-danger">*</span></label>
+                    <input type="file" name="report_file" class="form-control" required
+                           accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png">
+                    <div class="form-text">لا يغيّر حالة الدورة أو تواريخها — يستبدل الملف فقط.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary btn-sm">استبدال</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
 
 <!-- Modal دورة جديدة -->
 <div class="modal fade" id="newSessionModal" tabindex="-1">

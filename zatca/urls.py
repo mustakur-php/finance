@@ -11,4 +11,5 @@ urlpatterns = [
     path('session/<int:session_pk>/complete/', views.zatca_session_complete,    name='zatca_session_complete'),
     path('session/<int:session_pk>/assign/',   views.zatca_session_assign,      name='zatca_session_assign'),
     path('session/<int:session_pk>/delete/',   views.zatca_session_delete,      name='zatca_session_delete'),
+    path('session/<int:session_pk>/replace-report/', views.zatca_session_replace_report, name='zatca_session_replace_report'),
 ]

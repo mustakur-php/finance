@@ -273,10 +273,59 @@ def zatca_session_delete(request, session_pk):
     client = session.client
     if client.tenant != request.user.tenant:
         return redirect('zatca_list')
+
+    # منع حذف دورة مكتملة من الخادم مباشرة (ليس فقط إخفاء الزر في الواجهة) —
+    # استبدل التقرير بدلاً من ذلك إن كان الرفع بالخطأ.
+    if session.status == ZatcaSession.STATUS_COMPLETED:
+        messages.error(request, 'لا يمكن حذف دورة مكتملة. استخدم "استبدال التقرير" إن كان الرفع بالخطأ.')
+        return redirect('zatca_detail', pk=client.pk)
+
+    # تحذير إضافي لو الدورة مرتبطة بعمولة مؤكَّدة (احتراس، دون منع الأدمن)
+    confirmed_entry = session.commission_entries.filter(is_confirmed=True).exists()
+    if confirmed_entry:
+        messages.warning(request, 'تنبيه: كانت هذه الدورة مرتبطة بعمولة مؤكَّدة في شيت عمولات.')
+
     from audit_log.utils import log_action
     from audit_log.models import AuditLog
     log_action(request, AuditLog.ACTION_DELETE, model_name='ZatcaSession',
                object_repr=str(session), object_id=str(session_pk))
+    if session.report_file:
+        session.report_file.delete(save=False)
     session.delete()
     messages.success(request, 'تم حذف الدورة')
+    return redirect('zatca_detail', pk=client.pk)
+
+
+@login_required
+def zatca_session_replace_report(request, session_pk):
+    """
+    استبدال تقرير دورة (حتى لو مكتملة) دون تغيير حالتها أو تواريخها —
+    للحالات التي يُرفع فيها ملف بالخطأ.
+    """
+    if request.method != 'POST':
+        return redirect('zatca_list')
+    session = get_object_or_404(ZatcaSession, pk=session_pk)
+    client = session.client
+    if client.tenant != request.user.tenant or not _can_access_zatca(request.user, client):
+        return redirect('zatca_list')
+
+    report = request.FILES.get('report_file')
+    if not report:
+        messages.error(request, 'اختر ملفاً جديداً لاستبدال التقرير')
+        return redirect('zatca_detail', pk=client.pk)
+    ok, err = validate_upload(report)
+    if not ok:
+        messages.error(request, err)
+        return redirect('zatca_detail', pk=client.pk)
+
+    old_name = session.report_file.name if session.report_file else '—'
+    if session.report_file:
+        session.report_file.delete(save=False)
+    session.report_file = report
+    session.save(update_fields=['report_file'])
+
+    from audit_log.models import AuditLog
+    _log(request, AuditLog.ACTION_UPDATE, obj=session,
+         changes={'تقرير الدورة': {'من': old_name, 'إلى': report.name}})
+    messages.success(request, 'تم استبدال التقرير بنجاح')
     return redirect('zatca_detail', pk=client.pk)
