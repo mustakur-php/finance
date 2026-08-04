@@ -58,6 +58,7 @@ class Event(models.Model):
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default=STATUS_PENDING, verbose_name='الحالة')
     is_done = models.BooleanField(default=False, verbose_name='منجز')  # kept for compatibility
     reminder_sent = models.BooleanField(default=False)
+    day_reminder_sent = models.BooleanField(default=False, verbose_name='تم إرسال التذكير الصباحي')
     created_at = models.DateTimeField(auto_now_add=True)
 
     @property

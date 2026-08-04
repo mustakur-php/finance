@@ -23,6 +23,7 @@ class Visit(models.Model):
     notes = models.TextField(blank=True, verbose_name='ملاحظات')
     result = models.TextField(blank=True, verbose_name='نتيجة الزيارة')
     reminder_sent = models.BooleanField(default=False)
+    day_reminder_sent = models.BooleanField(default=False, verbose_name='تم إرسال التذكير الصباحي')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
