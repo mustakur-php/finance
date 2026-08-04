@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block title %}حلول التطبيقات{% endblock %}
+{% block page_title %}حلول التطبيقات{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:800px;margin:auto;">
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-lightbulb"></i> حلول التطبيقات
+        <span class="text-muted small ms-auto">مساحة نقاش مستمرة للأفكار والملاحظات</span>
+    </div>
+    <div class="card-body" style="max-height:60vh; overflow-y:auto;" id="solChatBody">
+        {% if messages_list %}
+        {% for m in messages_list %}
+        <div class="d-flex mb-3 {% if m.sender_id == request.user.id %}flex-row-reverse{% endif %}">
+            <div style="max-width:75%;">
+                <div class="small text-muted mb-1 {% if m.sender_id == request.user.id %}text-end{% endif %}">
+                    {% if m.sender %}{{ m.sender.get_full_name|default:m.sender.username }}{% else %}مستخدم محذوف{% endif %}
+                    — {{ m.created_at|date:"Y/m/d H:i" }}
+                </div>
+                <div class="px-3 py-2"
+                     style="border-radius:14px; white-space:pre-wrap; word-break:break-word;
+                     {% if m.sender_id == request.user.id %}background:#0ea5e9; color:#fff;
+                     {% else %}background:#f1f5f9; color:#0f172a;{% endif %}">
+                    {{ m.body }}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="text-muted text-center py-5 mb-0">لا توجد رسائل بعد — ابدأ النقاش بكتابة أول فكرة.</p>
+        {% endif %}
+    </div>
+    <div class="card-footer bg-white">
+        <form method="post" class="d-flex gap-2">
+            {% csrf_token %}
+            <textarea name="body" class="form-control" rows="2" placeholder="اكتب فكرتك أو ملاحظتك هنا..." required></textarea>
+            <button type="submit" class="btn btn-primary align-self-end">
+                <i class="bi bi-send"></i>
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+(function() {
+    var box = document.getElementById('solChatBody');
+    if (box) box.scrollTop = box.scrollHeight;
+})();
+</script>
+{% endblock %}

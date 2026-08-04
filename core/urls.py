@@ -16,5 +16,6 @@ urlpatterns = [
     path('workflow/', include('workflow.urls')),
     path('zatca/', include('zatca.urls')),
     path('reports/', include('reports.urls')),
+    path('solutions/', include('solutions.urls')),
     path('mustafa/', include('superadmin_panel.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

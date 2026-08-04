@@ -57,12 +57,14 @@ class User(AbstractUser):
     ROLE_SALES = 'sales'
     ROLE_ACCOUNTANT = 'accountant'
     ROLE_REVIEW = 'review'
+    ROLE_DEVELOPER = 'developer'
 
     ROLE_CHOICES = [
         (ROLE_ADMIN, 'أدمن'),
         (ROLE_SALES, 'مندوب'),
         (ROLE_ACCOUNTANT, 'محاسب'),
         (ROLE_REVIEW, 'مراجعة'),
+        (ROLE_DEVELOPER, 'مطور'),
     ]
 
     tenant       = models.ForeignKey(Tenant, on_delete=models.CASCADE, null=True, blank=True, related_name='users')
@@ -92,6 +94,10 @@ class User(AbstractUser):
     @property
     def is_review(self):
         return self.role == self.ROLE_REVIEW
+
+    @property
+    def is_developer(self):
+        return self.role == self.ROLE_DEVELOPER
 
     class Meta:
         verbose_name = 'مستخدم'

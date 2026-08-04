@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     'zatca',
     'reports',
     'superadmin_panel',
+    'solutions',
 ]
 
 MIDDLEWARE = [
