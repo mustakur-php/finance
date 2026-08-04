@@ -3,21 +3,21 @@
 {% block page_title %}حلول التطبيقات{% endblock %}
 
 {% block content %}
-<div class="card" style="max-width:800px;margin:auto;">
-    <div class="card-header d-flex align-items-center gap-2">
+<div class="card" style="height:calc(100vh - 130px); display:flex; flex-direction:column;">
+    <div class="card-header d-flex align-items-center gap-2 flex-shrink-0">
         <i class="bi bi-lightbulb"></i> حلول التطبيقات
         <span class="text-muted small ms-auto">مساحة نقاش مستمرة للأفكار والملاحظات</span>
     </div>
-    <div class="card-body" style="max-height:60vh; overflow-y:auto;" id="solChatBody">
+    <div class="card-body flex-grow-1" style="overflow-y:auto;" id="solChatBody">
         {% if messages_list %}
         {% for m in messages_list %}
-        <div class="d-flex mb-3 {% if m.sender_id == request.user.id %}flex-row-reverse{% endif %}">
-            <div style="max-width:75%;">
-                <div class="small text-muted mb-1 {% if m.sender_id == request.user.id %}text-end{% endif %}">
+        <div class="d-flex mb-3 {% if m.sender_id == request.user.id %}justify-content-end{% endif %}">
+            <div style="max-width:75%; display:inline-flex; flex-direction:column; {% if m.sender_id == request.user.id %}align-items:flex-end;{% endif %}">
+                <div class="small text-muted mb-1">
                     {% if m.sender %}{{ m.sender.get_full_name|default:m.sender.username }}{% else %}مستخدم محذوف{% endif %}
                     — {{ m.created_at|date:"Y/m/d H:i" }}
                 </div>
-                <div class="px-3 py-2"
+                <div class="px-3 py-2 d-inline-block"
                      style="border-radius:14px; white-space:pre-wrap; word-break:break-word;
                      {% if m.sender_id == request.user.id %}background:#0ea5e9; color:#fff;
                      {% else %}background:#f1f5f9; color:#0f172a;{% endif %}">
@@ -30,7 +30,7 @@
         <p class="text-muted text-center py-5 mb-0">لا توجد رسائل بعد — ابدأ النقاش بكتابة أول فكرة.</p>
         {% endif %}
     </div>
-    <div class="card-footer bg-white">
+    <div class="card-footer bg-white flex-shrink-0">
         <form method="post" class="d-flex gap-2">
             {% csrf_token %}
             <textarea name="body" class="form-control" rows="2" placeholder="اكتب فكرتك أو ملاحظتك هنا..." required></textarea>
