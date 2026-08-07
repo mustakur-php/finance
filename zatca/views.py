@@ -50,6 +50,7 @@ def zatca_list(request):
     )
 
     status_filter = request.GET.get('status', '')
+    client_active_filter = request.GET.get('client_active', '')
     q = request.GET.get('q', '').strip()
     if status_filter == 'active':
         qs = qs.filter(has_active_session=True)
@@ -57,6 +58,10 @@ def zatca_list(request):
         qs = qs.filter(has_active_session=False, has_any_session=True)
     elif status_filter == 'new':
         qs = qs.filter(has_any_session=False)
+    if client_active_filter == 'yes':
+        qs = qs.filter(is_active=True)
+    elif client_active_filter == 'no':
+        qs = qs.filter(is_active=False)
     if q:
         qs = qs.filter(Q(name__icontains=q) | Q(company__icontains=q))
 
@@ -70,6 +75,7 @@ def zatca_list(request):
         'clients': page_obj,
         'page_obj': page_obj,
         'status_filter': status_filter,
+        'client_active_filter': client_active_filter,
         'q': q,
         'total_active': total_active,
         'total_idle': total_idle,
@@ -163,6 +169,22 @@ def zatca_toggle_commissionable(request, pk):
          changes={'العمولة': {'من': 'غير خاضع' if client.is_commissionable else 'خاضع',
                               'إلى': 'خاضع' if client.is_commissionable else 'غير خاضع'}})
     return JsonResponse({'status': 'ok', 'is_commissionable': client.is_commissionable})
+
+
+@login_required
+@admin_required
+def zatca_toggle_active(request, pk):
+    from django.http import JsonResponse, HttpResponseNotAllowed
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+    client = get_object_or_404(ZatcaClient, pk=pk, tenant=request.user.tenant)
+    client.is_active = not client.is_active
+    client.save(update_fields=['is_active'])
+    from audit_log.models import AuditLog
+    _log(request, AuditLog.ACTION_UPDATE, obj=client,
+         changes={'الحالة': {'من': 'غير نشط' if client.is_active else 'نشط',
+                              'إلى': 'نشط' if client.is_active else 'غير نشط'}})
+    return JsonResponse({'status': 'ok', 'is_active': client.is_active})
 
 
 @login_required

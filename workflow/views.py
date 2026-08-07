@@ -44,6 +44,7 @@ def workflow_list(request):
     q            = request.GET.get('q', '').strip()
     stage_filter = request.GET.get('stage', '')
     status_filter = request.GET.get('status', '')
+    active_filter = request.GET.get('active', '')
 
     if q:
         from django.db.models import Q
@@ -52,6 +53,10 @@ def workflow_list(request):
         clients = clients.filter(stages__stage=stage_filter)
     if status_filter:
         clients = clients.filter(stages__status=status_filter)
+    if active_filter == 'yes':
+        clients = clients.filter(is_active=True)
+    elif active_filter == 'no':
+        clients = clients.filter(is_active=False)
 
     paginator = Paginator(clients.distinct().order_by('-created_at'), 10)
     page_obj = paginator.get_page(request.GET.get('page'))
@@ -60,9 +65,27 @@ def workflow_list(request):
         'q': q,
         'stage_filter': stage_filter,
         'status_filter': status_filter,
+        'active_filter': active_filter,
         'stage_choices': WorkflowStage.STAGE_CHOICES,
         'status_choices': WorkflowStage.STATUS_CHOICES,
     })
+
+
+@login_required
+@admin_required
+def workflow_toggle_active(request, pk):
+    from django.http import JsonResponse, HttpResponseNotAllowed
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+    client = get_object_or_404(ReviewClient, pk=pk, tenant=request.user.tenant)
+    client.is_active = not client.is_active
+    client.save(update_fields=['is_active'])
+    from audit_log.utils import log_action
+    from audit_log.models import AuditLog
+    log_action(request, AuditLog.ACTION_UPDATE, obj=client,
+               changes={'الحالة': {'من': 'غير نشط' if client.is_active else 'نشط',
+                                    'إلى': 'نشط' if client.is_active else 'غير نشط'}})
+    return JsonResponse({'status': 'ok', 'is_active': client.is_active})
 
 
 @login_required

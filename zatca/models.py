@@ -30,6 +30,7 @@ class ZatcaClient(models.Model):
         (12, 'سنوي'),
     ]
     period_months      = models.PositiveSmallIntegerField(choices=PERIOD_CHOICES, default=1, verbose_name='الفترة')
+    is_active          = models.BooleanField(default=True, verbose_name='نشط')
     is_commissionable  = models.BooleanField(default=False, verbose_name='خاضع للعمولة')
     created_by         = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,

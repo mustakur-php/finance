@@ -67,6 +67,7 @@ def commission_create(request):
             review_clients = ReviewClient.objects.filter(
                 tenant=request.user.tenant,
                 is_commissionable=True,
+                is_active=True,
             ).select_related('assigned_reviewer')
 
             from zatca.models import ZatcaSession
@@ -77,11 +78,15 @@ def commission_create(request):
             zatca_sessions = ZatcaSession.objects.filter(
                 client__tenant=request.user.tenant,
                 client__is_commissionable=True,
+                client__is_active=True,
                 status=ZatcaSession.STATUS_COMPLETED,
             ).exclude(id__in=used_session_ids).select_related('client', 'client__assigned_accountant', 'assigned_accountant')
 
             from onetime_services.models import OneTimeService
-            # عمولات الخدمات لمرة واحدة مبنية على الخدمات المكتملة غير المضافة لأي شيت
+            # عمولات الخدمات لمرة واحدة مبنية على الخدمات المكتملة غير المضافة لأي شيت.
+            # ملاحظة: لا نفلتر بـ is_active هنا — الحقل يتحول إلى False تلقائياً
+            # فور إكمال الخدمة (هذا هو تصميم القسم)، فاستخدامه هنا كان سيستبعد
+            # كل خدمة أُكملت للتو من عمولتها، وهو عكس المطلوب.
             used_onetime_ids = CommissionEntry.objects.filter(
                 sheet__tenant=request.user.tenant, onetime_service__isnull=False
             ).values_list('onetime_service_id', flat=True)
@@ -264,6 +269,7 @@ def commission_refresh_sheet(request, pk):
     new_review_clients = ReviewClient.objects.filter(
         tenant=request.user.tenant,
         is_commissionable=True,
+        is_active=True,
     ).exclude(id__in=existing_review_ids).select_related('assigned_reviewer')
 
     from zatca.models import ZatcaSession
@@ -273,6 +279,7 @@ def commission_refresh_sheet(request, pk):
     new_sessions = ZatcaSession.objects.filter(
         client__tenant=request.user.tenant,
         client__is_commissionable=True,
+        client__is_active=True,
         status=ZatcaSession.STATUS_COMPLETED,
     ).exclude(id__in=used_session_ids).select_related('client', 'client__assigned_accountant', 'assigned_accountant')
 

@@ -207,6 +207,19 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(() => { el.checked = !el.checked; });
         });
     });
+    document.querySelectorAll('.active-toggle').forEach(function (toggle) {
+        toggle.addEventListener('change', function () {
+            const url = this.getAttribute('data-url');
+            const el  = this;
+            fetch(url, {
+                method: 'POST',
+                headers: {'X-CSRFToken': '{{ csrf_token }}', 'X-Requested-With': 'XMLHttpRequest'},
+            })
+            .then(r => r.json())
+            .then(data => { el.checked = data.is_active; })
+            .catch(() => { el.checked = !el.checked; });
+        });
+    });
 });
 </script>
 {% block extra_js %}{% endblock %}

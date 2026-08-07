@@ -7,6 +7,7 @@ urlpatterns = [
     path('<int:pk>/edit/',      views.zatca_edit,                name='zatca_edit'),
     path('<int:pk>/delete/',    views.zatca_delete,              name='zatca_delete'),
     path('<int:pk>/toggle-commissionable/', views.zatca_toggle_commissionable, name='zatca_toggle_commissionable'),
+    path('<int:pk>/toggle-active/',         views.zatca_toggle_active,          name='zatca_toggle_active'),
     path('<int:pk>/session/create/',        views.zatca_session_create,         name='zatca_session_create'),
     path('session/<int:session_pk>/complete/', views.zatca_session_complete,    name='zatca_session_complete'),
     path('session/<int:session_pk>/assign/',   views.zatca_session_assign,      name='zatca_session_assign'),
