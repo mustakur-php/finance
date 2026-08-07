@@ -86,6 +86,9 @@
                         {% if client.in_zatca %}
                         <span class="badge ms-1" style="background:#b45309;font-size:0.62rem">ZATCA</span>
                         {% endif %}
+                        {% if client.in_onetime %}
+                        <span class="badge ms-1" style="background:#0891b2;font-size:0.62rem">خدمة لمرة واحدة</span>
+                        {% endif %}
                     </td>
                     <td>{{ client.company|default:"-" }}</td>
                     <td>{{ client.city|default:"-" }}</td>
@@ -123,7 +126,7 @@
                         <div class="d-flex gap-1">
                             <a href="{% url 'client_detail' client.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
                             <a href="{% url 'client_edit' client.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
-                            {% if not client.in_review or not client.in_zatca %}
+                            {% if not client.in_review or not client.in_zatca or not client.in_onetime %}
                             <div class="dropdown">
                                 <button class="btn btn-sm btn-success dropdown-toggle" data-bs-toggle="dropdown" title="إرسال لقسم">
                                     <i class="bi bi-arrow-up-circle"></i>
@@ -145,6 +148,16 @@
                                                 data-bs-target="#zatcaModal{{ client.pk }}">
                                             <i class="bi bi-building me-2" style="color:#b45309"></i> قسم ZATCA
                                         </button>
+                                    </li>
+                                    {% endif %}
+                                    {% if not client.in_onetime %}
+                                    <li>
+                                        <form method="post" action="{% url 'client_convert' client.pk %}" onsubmit="return confirm('إرسال لخدمة لمرة واحدة؟')">
+                                            {% csrf_token %}<input type="hidden" name="target" value="onetime">
+                                            <button type="submit" class="dropdown-item">
+                                                <i class="bi bi-check2-square me-2" style="color:#0891b2"></i> خدمة لمرة واحدة
+                                            </button>
+                                        </form>
                                     </li>
                                     {% endif %}
                                 </ul>

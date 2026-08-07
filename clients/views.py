@@ -57,9 +57,11 @@ def clients_list(request):
     from django.db.models import Exists, OuterRef
     from workflow.models import ReviewClient
     from zatca.models import ZatcaClient
+    from onetime_services.models import OneTimeServiceClient
     clients = clients.annotate(
         in_review=Exists(ReviewClient.objects.filter(source_client=OuterRef('pk'))),
         in_zatca=Exists(ZatcaClient.objects.filter(source_client=OuterRef('pk'))),
+        in_onetime=Exists(OneTimeServiceClient.objects.filter(source_client=OuterRef('pk'))),
     )
     activities = Activity.objects.filter(tenant=request.user.tenant, is_active=True)
     cities = Client.objects.filter(tenant=request.user.tenant, is_active=True, client_type=Client.TYPE_ACTUAL).exclude(city='').values_list('city', flat=True).distinct().order_by('city')
@@ -104,21 +106,25 @@ def targeted_list(request):
     from django.db.models import Exists, OuterRef, Q
     from workflow.models import ReviewClient
     from zatca.models import ZatcaClient
+    from onetime_services.models import OneTimeServiceClient
     clients = clients.annotate(
         in_review=Exists(ReviewClient.objects.filter(source_client=OuterRef('pk'))),
         in_zatca=Exists(ZatcaClient.objects.filter(source_client=OuterRef('pk'))),
+        in_onetime=Exists(OneTimeServiceClient.objects.filter(source_client=OuterRef('pk'))),
     )
     conv = request.GET.get('conv', 'new')
     if conv == 'new':
-        clients = clients.filter(in_review=False, in_zatca=False)
+        clients = clients.filter(in_review=False, in_zatca=False, in_onetime=False)
     elif conv == 'review':
         clients = clients.filter(in_review=True)
     elif conv == 'zatca':
         clients = clients.filter(in_zatca=True)
+    elif conv == 'onetime':
+        clients = clients.filter(in_onetime=True)
     elif conv == 'both':
         clients = clients.filter(in_review=True, in_zatca=True)
     elif conv == 'converted':
-        clients = clients.filter(Q(in_review=True) | Q(in_zatca=True))
+        clients = clients.filter(Q(in_review=True) | Q(in_zatca=True) | Q(in_onetime=True))
 
     activities = Activity.objects.filter(tenant=request.user.tenant, is_active=True)
     cities = Client.objects.filter(tenant=request.user.tenant, is_active=True, client_type=Client.TYPE_POTENTIAL).exclude(city='').values_list('city', flat=True).distinct().order_by('city')
@@ -131,7 +137,8 @@ def targeted_list(request):
     ).annotate(
         in_review=Exists(ReviewClient.objects.filter(source_client=OuterRef('pk'))),
         in_zatca=Exists(ZatcaClient.objects.filter(source_client=OuterRef('pk'))),
-    ).filter(in_review=False, in_zatca=False).count()
+        in_onetime=Exists(OneTimeServiceClient.objects.filter(source_client=OuterRef('pk'))),
+    ).filter(in_review=False, in_zatca=False, in_onetime=False).count()
     filters = {'q': q, 'city': city, 'district': district, 'activity': activity,
                'sales': sales_id, 'conv': conv}
     accountant_users = assignable_users(request.user.tenant, UserModel.ROLE_ACCOUNTANT)
@@ -334,6 +341,37 @@ def client_convert(request, pk):
                    changes={'إضافة لقسم': {'من': '', 'إلى': 'ZATCA'}})
         messages.success(request, f'تمت إضافة "{client.name}" إلى قسم ZATCA')
         return redirect('zatca_detail', pk=zatca_client.pk)
+
+    elif target == 'onetime':
+        from onetime_services.models import OneTimeServiceClient
+        onetime_client = OneTimeServiceClient.objects.create(
+            tenant=client.tenant,
+            source_client=client,
+            name=client.name,
+            company=client.company,
+            phone=client.phone,
+            email=client.email,
+            city=client.city,
+            district=client.district,
+            address=client.address,
+            responsible_person=client.responsible_person,
+            job_title=client.job_title,
+            notes=client.notes,
+            distinguished_number=client.distinguished_number,
+            secret_number=client.secret_number,
+            is_active=False,
+            created_by=request.user,
+        )
+        client.converted_status = 'onetime'
+        client.converted_at = timezone.now()
+        client.save(update_fields=['converted_status', 'converted_at'])
+        from audit_log.utils import log_action
+        from audit_log.models import AuditLog
+        log_action(request, AuditLog.ACTION_CREATE, obj=onetime_client)
+        log_action(request, AuditLog.ACTION_UPDATE, obj=client,
+                   changes={'إضافة لقسم': {'من': '', 'إلى': 'خدمات لمرة واحدة'}})
+        messages.success(request, f'تمت إضافة "{client.name}" لقسم الخدمات لمرة واحدة — افتح أول خدمة له من صفحته')
+        return redirect('onetime_detail', pk=onetime_client.pk)
 
     elif target == 'review':
         from workflow.models import ReviewClient

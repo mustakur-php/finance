@@ -9,6 +9,23 @@ from accounts.decorators import admin_required
 from .forms import CommissionSheetForm
 
 
+def _rep_kwargs_for_executor(user):
+    """
+    يوجّه منفّذ الخدمة لعمود العمولة المناسب حسب دوره الفعلي — مندوب، محاسب،
+    أو مراجع. لا يوجد عمود مخصص لأدوار أخرى (أدمن/مطور)، فتُترك بلا عمود
+    عمولة محدد (تبقى قيمتها صفراً تلقائياً في التقارير).
+    """
+    if not user:
+        return {}
+    if user.is_sales:
+        return {'sales_rep': user}
+    if user.is_accountant:
+        return {'accountant_rep': user}
+    if user.is_review:
+        return {'reviewer_rep': user}
+    return {}
+
+
 @login_required
 @admin_required
 def commissions_list(request):
@@ -63,6 +80,17 @@ def commission_create(request):
                 status=ZatcaSession.STATUS_COMPLETED,
             ).exclude(id__in=used_session_ids).select_related('client', 'client__assigned_accountant', 'assigned_accountant')
 
+            from onetime_services.models import OneTimeService
+            # عمولات الخدمات لمرة واحدة مبنية على الخدمات المكتملة غير المضافة لأي شيت
+            used_onetime_ids = CommissionEntry.objects.filter(
+                sheet__tenant=request.user.tenant, onetime_service__isnull=False
+            ).values_list('onetime_service_id', flat=True)
+            onetime_services_qs = OneTimeService.objects.filter(
+                client__tenant=request.user.tenant,
+                client__is_commissionable=True,
+                status=OneTimeService.STATUS_COMPLETED,
+            ).exclude(id__in=used_onetime_ids).select_related('client', 'assigned_to')
+
             entries = []
             for client in actual_clients:
                 entries.append(CommissionEntry(
@@ -88,6 +116,14 @@ def commission_create(request):
                     zatca_session=session,
                     accountant_rep=session.effective_accountant,
                     amount=0,
+                ))
+            for service in onetime_services_qs:
+                entries.append(CommissionEntry(
+                    sheet=sheet,
+                    onetime_client=service.client,
+                    onetime_service=service,
+                    amount=0,
+                    **_rep_kwargs_for_executor(service.assigned_to),
                 ))
             if entries:
                 for e in entries:
@@ -240,6 +276,16 @@ def commission_refresh_sheet(request, pk):
         status=ZatcaSession.STATUS_COMPLETED,
     ).exclude(id__in=used_session_ids).select_related('client', 'client__assigned_accountant', 'assigned_accountant')
 
+    from onetime_services.models import OneTimeService
+    used_onetime_ids = CommissionEntry.objects.filter(
+        sheet__tenant=request.user.tenant, onetime_service__isnull=False
+    ).values_list('onetime_service_id', flat=True)
+    new_onetime_services = OneTimeService.objects.filter(
+        client__tenant=request.user.tenant,
+        client__is_commissionable=True,
+        status=OneTimeService.STATUS_COMPLETED,
+    ).exclude(id__in=used_onetime_ids).select_related('client', 'assigned_to')
+
     entries = [
         CommissionEntry(
             sheet=sheet, client=c,
@@ -264,6 +310,13 @@ def commission_refresh_sheet(request, pk):
             amount=0,
         )
         for s in new_sessions
+    ] + [
+        CommissionEntry(
+            sheet=sheet, onetime_client=svc.client, onetime_service=svc,
+            amount=0,
+            **_rep_kwargs_for_executor(svc.assigned_to),
+        )
+        for svc in new_onetime_services
     ]
     if entries:
         for e in entries:

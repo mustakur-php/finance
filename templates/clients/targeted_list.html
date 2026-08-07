@@ -62,7 +62,8 @@
                         <option value="converted" {% if filters.conv == 'converted' %}selected{% endif %}>المحوّلون</option>
                         <option value="review"    {% if filters.conv == 'review' %}selected{% endif %}>في المراجعة</option>
                         <option value="zatca"     {% if filters.conv == 'zatca' %}selected{% endif %}>في ZATCA</option>
-                        <option value="both"      {% if filters.conv == 'both' %}selected{% endif %}>في القسمين</option>
+                        <option value="onetime"   {% if filters.conv == 'onetime' %}selected{% endif %}>في خدمة لمرة واحدة</option>
+                        <option value="both"      {% if filters.conv == 'both' %}selected{% endif %}>في المراجعة وZATCA معاً</option>
                     </select>
                 </div>
                 <div class="col-auto d-flex gap-1">
@@ -98,6 +99,9 @@
                         {% endif %}
                         {% if client.in_zatca %}
                         <span class="badge ms-1" style="background:#b45309;font-size:0.62rem">ZATCA</span>
+                        {% endif %}
+                        {% if client.in_onetime %}
+                        <span class="badge ms-1" style="background:#0891b2;font-size:0.62rem">خدمة لمرة واحدة</span>
                         {% endif %}
                     </td>
                     <td>{{ client.company|default:"-" }}</td>
@@ -157,6 +161,14 @@
                                             data-bs-target="#zatcaModal{{ client.pk }}">
                                             <i class="bi bi-building me-2" style="color:#b45309"></i> ZATCA
                                         </button>
+                                    </li>
+                                    <li>
+                                        <form method="post" action="{% url 'client_convert' client.pk %}" onsubmit="return confirm('تحويل لخدمة لمرة واحدة؟')">
+                                            {% csrf_token %}<input type="hidden" name="target" value="onetime">
+                                            <button type="submit" class="dropdown-item">
+                                                <i class="bi bi-check2-square me-2" style="color:#0891b2"></i> خدمة لمرة واحدة
+                                            </button>
+                                        </form>
                                     </li>
                                 </ul>
                             </div>

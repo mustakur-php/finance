@@ -29,6 +29,10 @@ class CommissionEntry(models.Model):
                                        related_name='commission_entries', verbose_name='عميل ZATCA')
     zatca_session = models.ForeignKey('zatca.ZatcaSession', on_delete=models.SET_NULL, null=True, blank=True,
                                        related_name='commission_entries', verbose_name='دورة ZATCA')
+    onetime_client  = models.ForeignKey('onetime_services.OneTimeServiceClient', on_delete=models.SET_NULL, null=True, blank=True,
+                                         related_name='commission_entries', verbose_name='عميل خدمة لمرة واحدة')
+    onetime_service = models.ForeignKey('onetime_services.OneTimeService', on_delete=models.SET_NULL, null=True, blank=True,
+                                         related_name='commission_entries', verbose_name='خدمة لمرة واحدة')
     sales_rep = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
                                    related_name='commission_entries', verbose_name='المندوب')
     accountant_rep = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
@@ -78,6 +82,10 @@ class CommissionEntry(models.Model):
             return f"{self.zatca_session.client.name} ({self.zatca_session.start_date})"
         if self.zatca_client:
             return self.zatca_client.name
+        if self.onetime_service:
+            return f"{self.onetime_service.client.name} ({self.onetime_service.service_type})"
+        if self.onetime_client:
+            return self.onetime_client.name
         return ''
 
     def _live_company(self):
@@ -89,6 +97,10 @@ class CommissionEntry(models.Model):
             return self.zatca_session.client.company or ''
         if self.zatca_client:
             return self.zatca_client.company or ''
+        if self.onetime_service:
+            return self.onetime_service.client.company or ''
+        if self.onetime_client:
+            return self.onetime_client.company or ''
         return ''
 
     def sync_snapshot(self):
@@ -122,6 +134,8 @@ class CommissionEntry(models.Model):
             return 'review'
         if self.zatca_session or self.zatca_client:
             return 'zatca'
+        if self.onetime_service or self.onetime_client:
+            return 'onetime'
         return 'client'
 
     class Meta:

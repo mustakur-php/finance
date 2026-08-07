@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     'reports',
     'superadmin_panel',
     'solutions',
+    'onetime_services',
 ]
 
 MIDDLEWARE = [

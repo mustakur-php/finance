@@ -56,10 +56,14 @@ class Client(models.Model):
     CONVERTED_NONE = ''
     CONVERTED_ACTUAL = 'actual'
     CONVERTED_REVIEW = 'review'
+    CONVERTED_ZATCA = 'zatca'
+    CONVERTED_ONETIME = 'onetime'
     CONVERTED_CHOICES = [
         (CONVERTED_NONE,   'لم يُحوَّل'),
         (CONVERTED_ACTUAL, 'تم التحويل لعميل فعلي'),
         (CONVERTED_REVIEW, 'تم التحويل لقسم المراجعة'),
+        (CONVERTED_ZATCA,  'تم التحويل لقسم ZATCA'),
+        (CONVERTED_ONETIME, 'تم التحويل لخدمة لمرة واحدة'),
     ]
     converted_status = models.CharField(max_length=10, choices=CONVERTED_CHOICES, default=CONVERTED_NONE, blank=True, verbose_name='حالة التحويل')
     converted_at = models.DateTimeField(null=True, blank=True, verbose_name='تاريخ التحويل')
@@ -84,6 +88,8 @@ class Client(models.Model):
             found.append(('review', 'المراجعة'))
         if self.zatca_copies.exists():
             found.append(('zatca', 'ZATCA'))
+        if self.onetime_copies.exists():
+            found.append(('onetime', 'خدمة لمرة واحدة'))
         return found
 
     def is_in_section(self, section):
@@ -91,6 +97,8 @@ class Client(models.Model):
             return self.review_copies.exists()
         if section == 'zatca':
             return self.zatca_copies.exists()
+        if section == 'onetime':
+            return self.onetime_copies.exists()
         if section == 'actual':
             return self.client_type == self.TYPE_ACTUAL
         return False
