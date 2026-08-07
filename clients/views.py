@@ -6,9 +6,11 @@ from .models import Client, Activity
 from accounts.decorators import admin_required, sales_required
 
 
-def get_tenant_clients(user, client_type=Client.TYPE_ACTUAL):
+def get_tenant_clients(user, client_type=Client.TYPE_ACTUAL, active=True):
     from django.db.models import Q
-    qs = Client.objects.filter(tenant=user.tenant, is_active=True, client_type=client_type)
+    qs = Client.objects.filter(tenant=user.tenant, client_type=client_type)
+    if active is not None:
+        qs = qs.filter(is_active=active)
     if user.is_sales:
         qs = qs.filter(assigned_sales=user)
     elif user.is_accountant:
@@ -34,7 +36,9 @@ def can_access_client(user, client):
 @login_required
 def clients_list(request):
     from accounts.models import User as UserModel
-    clients = get_tenant_clients(request.user, Client.TYPE_ACTUAL)
+    active_filter = request.GET.get('active', 'yes')
+    active_arg = {'yes': True, 'no': False, 'all': None}.get(active_filter, True)
+    clients = get_tenant_clients(request.user, Client.TYPE_ACTUAL, active=active_arg)
     q = request.GET.get('q', '')
     city = request.GET.get('city', '')
     district = request.GET.get('district', '')
@@ -70,7 +74,8 @@ def clients_list(request):
     accountant_users = assignable_users(request.user.tenant, UserModel.ROLE_ACCOUNTANT)
     if request.user.is_admin:
         sales_users = assignable_users(request.user.tenant, UserModel.ROLE_SALES)
-    filters = {'q': q, 'city': city, 'district': district, 'activity': activity, 'sales': sales_id, 'accountant': accountant_id}
+    filters = {'q': q, 'city': city, 'district': district, 'activity': activity,
+               'sales': sales_id, 'accountant': accountant_id, 'active': active_filter}
     from .models import ClientCommissionRule
     commission_rules = {(r.client_id, r.department): r for r in ClientCommissionRule.objects.filter(client__tenant=request.user.tenant)}
     paginator = Paginator(clients.order_by('-created_at'), 10)
@@ -459,7 +464,29 @@ def toggle_commissionable(request, pk):
         return JsonResponse({'status': 'forbidden'}, status=403)
     client.is_commissionable = not client.is_commissionable
     client.save(update_fields=['is_commissionable'])
+    from audit_log.utils import log_action
+    from audit_log.models import AuditLog
+    log_action(request, AuditLog.ACTION_UPDATE, obj=client,
+               changes={'العمولة': {'من': 'غير خاضع' if client.is_commissionable else 'خاضع',
+                                    'إلى': 'خاضع' if client.is_commissionable else 'غير خاضع'}})
     return JsonResponse({'status': 'ok', 'is_commissionable': client.is_commissionable})
+
+
+@login_required
+@admin_required
+def toggle_active(request, pk):
+    from django.http import JsonResponse, HttpResponseNotAllowed
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+    client = get_object_or_404(Client, pk=pk, tenant=request.user.tenant)
+    client.is_active = not client.is_active
+    client.save(update_fields=['is_active'])
+    from audit_log.utils import log_action
+    from audit_log.models import AuditLog
+    log_action(request, AuditLog.ACTION_UPDATE, obj=client,
+               changes={'الحالة': {'من': 'غير نشط' if client.is_active else 'نشط',
+                                    'إلى': 'نشط' if client.is_active else 'غير نشط'}})
+    return JsonResponse({'status': 'ok', 'is_active': client.is_active})
 
 
 @login_required

@@ -10,6 +10,8 @@ from .decorators import admin_required
 
 def login_view(request):
     if request.user.is_authenticated:
+        if request.user.is_superadmin:
+            return redirect('superadmin_dashboard')
         return redirect('dashboard')
     form = LoginForm(request.POST or None)
     if request.method == 'POST' and form.is_valid():
@@ -21,6 +23,9 @@ def login_view(request):
             from audit_log.utils import log_action
             from audit_log.models import AuditLog
             log_action(request, AuditLog.ACTION_LOGIN, obj=user)
+            # مالك النظام (سوبر أدمن) له لوحته الخاصة المنفصلة عن لوحة عملاء الشركات
+            if user.is_superadmin:
+                return redirect('superadmin_dashboard')
             return redirect('dashboard')
         messages.error(request, 'اسم المستخدم أو كلمة المرور غير صحيحة')
     return render(request, 'accounts/login.html', {'form': form})

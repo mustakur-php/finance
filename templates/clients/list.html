@@ -50,6 +50,13 @@
                     </select>
                 </div>
                 {% endif %}
+                <div class="col-md-2">
+                    <select name="active" class="form-select form-select-sm">
+                        <option value="yes" {% if filters.active == 'yes' %}selected{% endif %}>نشط فقط</option>
+                        <option value="no" {% if filters.active == 'no' %}selected{% endif %}>غير نشط فقط</option>
+                        <option value="all" {% if filters.active == 'all' %}selected{% endif %}>الكل</option>
+                    </select>
+                </div>
                 <div class="col-auto d-flex gap-1">
                     <button class="btn btn-primary btn-sm px-3">بحث</button>
                     <a href="{% url 'clients_list' %}" class="btn btn-outline-secondary btn-sm">مسح</a>
@@ -72,6 +79,7 @@
                     <th>النشاط</th>
                     {% if request.user.is_admin %}<th>أضافه</th>{% endif %}
                     {% if request.user.is_admin %}<th class="text-center">عمولة</th>{% endif %}
+                    {% if request.user.is_admin %}<th class="text-center">نشط</th>{% endif %}
                     <th></th>
                 </tr>
             </thead>
@@ -80,6 +88,9 @@
                 <tr>
                     <td>
                         <a href="{% url 'client_detail' client.pk %}" class="fw-semibold text-decoration-none">{{ client.name }}</a>
+                        {% if not client.is_active %}
+                        <span class="badge bg-secondary ms-1">غير نشط</span>
+                        {% endif %}
                         {% if client.in_review %}
                         <span class="badge ms-1" style="background:#6a1b9a;font-size:0.62rem">المراجعة</span>
                         {% endif %}
@@ -119,6 +130,15 @@
                             <input class="form-check-input commission-toggle" type="checkbox" role="switch"
                                    data-url="{% url 'toggle_commissionable' client.pk %}"
                                    {% if client.is_commissionable %}checked{% endif %}>
+                        </div>
+                    </td>
+                    {% endif %}
+                    {% if request.user.is_admin %}
+                    <td class="text-center">
+                        <div class="form-check form-switch d-flex justify-content-center m-0">
+                            <input class="form-check-input active-toggle" type="checkbox" role="switch"
+                                   data-url="{% url 'client_toggle_active' client.pk %}"
+                                   {% if client.is_active %}checked{% endif %}>
                         </div>
                     </td>
                     {% endif %}
@@ -167,7 +187,7 @@
                     </td>
                 </tr>
             {% empty %}
-                <tr><td colspan="9" class="text-center text-muted py-4">لا يوجد عملاء</td></tr>
+                <tr><td colspan="11" class="text-center text-muted py-4">لا يوجد عملاء</td></tr>
             {% endfor %}
             </tbody>
         </table>
