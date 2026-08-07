@@ -62,10 +62,14 @@ def dashboard_view(request):
         from clients.models import Client
         from workflow.models import ReviewClient
         from zatca.models import ZatcaClient
-        actual = Client.objects.filter(tenant=user.tenant, is_active=True, client_type=Client.TYPE_ACTUAL).count()
-        review = ReviewClient.objects.filter(tenant=user.tenant).count()
-        zatca  = ZatcaClient.objects.filter(tenant=user.tenant).count()
-        context['total_clients'] = actual + review + zatca
+        from onetime_services.models import OneTimeServiceClient
+        # الإجمالي = العملاء النشطون فقط في كل الأقسام (ما عدا المستهدفين)،
+        # فأي عميل يُعطَّل يختفي من هذا العداد مباشرة
+        actual  = Client.objects.filter(tenant=user.tenant, is_active=True, client_type=Client.TYPE_ACTUAL).count()
+        review  = ReviewClient.objects.filter(tenant=user.tenant, is_active=True).count()
+        zatca   = ZatcaClient.objects.filter(tenant=user.tenant, is_active=True).count()
+        onetime = OneTimeServiceClient.objects.filter(tenant=user.tenant, is_active=True).count()
+        context['total_clients'] = actual + review + zatca + onetime
         context['total_users'] = user.tenant.users.filter(is_active=True).count() if user.tenant else 0
         context['total_visits'] = Event.objects.filter(tenant=user.tenant, status=Event.STATUS_DONE).count() if user.tenant else 0
 
